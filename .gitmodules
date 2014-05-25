@@ -1,0 +1,8 @@
+[submodule "external/geomtk"]
+	path = external/geomtk
+	url = https://github.com/dongli/geomtk.git
+	branch = master
+[submodule "external/barotropic-model"]
+	path = external/barotropic-model
+	url = https://github.com/dongli/barotropic-model.git
+	branch = master
