@@ -295,134 +295,127 @@ void AdvectionManager::integrate_RK4(double dt,
     TimeLevelIndex<2> halfTimeIdx = newTimeIdx-0.5;
     double dt05 = 0.5*dt;
     numLongTracer = 0;
-#pragma omp parallel
-#pragma omp single
-    {
-        list<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-        for (; tracer != tracerManager.tracers.end(); ++tracer) {
-#pragma omp task
-            {
-                Velocity v1(domain->getNumDim());
-                Velocity v2(domain->getNumDim());
-                Velocity v3(domain->getNumDim());
-                Velocity v4(domain->getNumDim());
-                Velocity v(domain->getNumDim());
-                const VelocityField::FieldType &divergence = velocity.getDivergence();
-                double div;
-                vec rho(tracerManager.tracers.size());
-                double k1_rho[tracerManager.getNumSpecies()];
-                double k2_rho[tracerManager.getNumSpecies()];
-                double k3_rho[tracerManager.getNumSpecies()];
-                double k4_rho[tracerManager.getNumSpecies()];
-                // -------------------------------------------------------------
-                // update location and deformation matrix of tracer
-                SpaceCoord &x0 = (*tracer)->getX(oldTimeIdx);
-                SpaceCoord &x1 = (*tracer)->getX(newTimeIdx);
-                MeshIndex &idx0 = (*tracer)->getMeshIndex(oldTimeIdx);
-                MeshIndex &idx1 = (*tracer)->getMeshIndex(newTimeIdx);
-                // TODO: Should we hide the following codes? Because they are
-                //       related to sphere domain.
-                if (idx0.isOnPole()) {
-                    idx0.setMoveOnPole(true);
-                    idx1.setMoveOnPole(true);
-                    x0.transformToPS(*domain);
-                } else {
-                    idx0.setMoveOnPole(false);
-                    idx1.setMoveOnPole(false);
-                }
-                // =============================================================
-                // stage 1
-                regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
-                regrid->run(BILINEAR, oldTimeIdx, divergence, x0, div, &idx0);
-                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k1_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
-                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k1_rho[s];
-                }
-                mesh->move(x0, dt05, v1, idx0, x1);
-                idx1.locate(*mesh, x1);
-                // =============================================================
-                // stage 2
-                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
-                regrid->run(BILINEAR, halfTimeIdx, divergence, x1, div, &idx1);
-                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k2_rho[s] = -rho[s]*div;
-                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k2_rho[s];
-                }
-                mesh->move(x0, dt05, v2, idx0, x1);
-                idx1.locate(*mesh, x1);
-                // =============================================================
-                // stage 3
-                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
-                regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
-                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k3_rho[s] = -rho[s]*div;
-                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt*k3_rho[s];
-                }
-                mesh->move(x0, dt, v3, idx0, x1);
-                idx1.locate(*mesh, x1);
-                // =============================================================
-                // stage 4
-                regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
-                regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
-                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k4_rho[s] = -rho[s]*div;
-                    (*tracer)->getSpeciesDensity(s) += dt*
-                        (k1_rho[s]+2.0*k2_rho[s]+2.0*k3_rho[s]+k4_rho[s])/6.0;
-                }
-                v = (v1+v2*2.0+v3*2.0+v4)/6.0;
-                mesh->move(x0, dt, v, idx0, x1);
-                idx1.locate(*mesh, x1);
-                x1.transformToCart(*domain);
-                // -------------------------------------------------------------
-                // update skeleton points of tracer
-                TracerSkeleton &s = (*tracer)->getSkeleton();
-                vector<SpaceCoord*> &x0s = s.getSpaceCoords(oldTimeIdx);
-                vector<SpaceCoord*> &x1s = s.getSpaceCoords(newTimeIdx);
-                vector<MeshIndex*> &idx0s = s.getMeshIdxs(oldTimeIdx);
-                vector<MeshIndex*> &idx1s = s.getMeshIdxs(newTimeIdx);
-                for (int i = 0; i < x0s.size(); ++i) {
-                    if (idx0s[i]->isOnPole()) {
-                        idx0s[i]->setMoveOnPole(true);
-                        idx1s[i]->setMoveOnPole(true);
-                        x0s[i]->transformToPS(*domain);
-                    } else {
-                        idx0s[i]->setMoveOnPole(false);
-                        idx1s[i]->setMoveOnPole(false);
-                    }
-                    // =========================================================
-                    // stage 1
-                    regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
-                    mesh->move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
-                    idx1s[i]->locate(*mesh, *x1s[i]);
-                    // =========================================================
-                    // stage 2
-                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v2, idx1s[i]);
-                    mesh->move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
-                    idx1s[i]->locate(*mesh, *x1s[i]);
-                    // =========================================================
-                    // stage 3
-                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v3, idx1s[i]);
-                    mesh->move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
-                    idx1s[i]->locate(*mesh, *x1s[i]);
-                    // =========================================================
-                    // stage 4
-                    regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
-                    v = (v1+v2*2.0+v3*2.0+v4)/6.0;
-                    mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
-                    idx1s[i]->locate(*mesh, *x1s[i]);
-                    x1s[i]->transformToCart(*domain);
-                }
-                // -------------------------------------------------------------
-                (*tracer)->updateDeformMatrix(*domain, *mesh, newTimeIdx);
-                if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
-                    if (numLongTracer == longTracers.size()) {
-                        longTracers.push_back(tracer);
-                    } else {
-                        longTracers[numLongTracer] = tracer;
-                    }
-                    numLongTracer++;
-                }
+    list<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        Velocity v1(domain->getNumDim());
+        Velocity v2(domain->getNumDim());
+        Velocity v3(domain->getNumDim());
+        Velocity v4(domain->getNumDim());
+        Velocity v(domain->getNumDim());
+        const VelocityField::FieldType &divergence = velocity.getDivergence();
+        double div;
+        vec rho(tracerManager.tracers.size());
+        double k1_rho[tracerManager.getNumSpecies()];
+        double k2_rho[tracerManager.getNumSpecies()];
+        double k3_rho[tracerManager.getNumSpecies()];
+        double k4_rho[tracerManager.getNumSpecies()];
+        // ---------------------------------------------------------------------
+        // update location and deformation matrix of tracer
+        SpaceCoord &x0 = (*tracer)->getX(oldTimeIdx);
+        SpaceCoord &x1 = (*tracer)->getX(newTimeIdx);
+        MeshIndex &idx0 = (*tracer)->getMeshIndex(oldTimeIdx);
+        MeshIndex &idx1 = (*tracer)->getMeshIndex(newTimeIdx);
+        // TODO: Should we hide the following codes? Because they are
+        //       related to sphere domain.
+        if (idx0.isOnPole()) {
+            idx0.setMoveOnPole(true);
+            idx1.setMoveOnPole(true);
+            x0.transformToPS(*domain);
+        } else {
+            idx0.setMoveOnPole(false);
+            idx1.setMoveOnPole(false);
+        }
+        // =====================================================================
+        // stage 1
+        regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
+        regrid->run(BILINEAR, oldTimeIdx, divergence, x0, div, &idx0);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k1_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+            rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k1_rho[s];
+        }
+        mesh->move(x0, dt05, v1, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // =====================================================================
+        // stage 2
+        regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
+        regrid->run(BILINEAR, halfTimeIdx, divergence, x1, div, &idx1);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k2_rho[s] = -rho[s]*div;
+            rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k2_rho[s];
+        }
+        mesh->move(x0, dt05, v2, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // =====================================================================
+        // stage 3
+        regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
+        regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k3_rho[s] = -rho[s]*div;
+            rho[s] = (*tracer)->getSpeciesDensity(s)+dt*k3_rho[s];
+        }
+        mesh->move(x0, dt, v3, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // =====================================================================
+        // stage 4
+        regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
+        regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k4_rho[s] = -rho[s]*div;
+            (*tracer)->getSpeciesDensity(s) += dt*
+                (k1_rho[s]+2.0*k2_rho[s]+2.0*k3_rho[s]+k4_rho[s])/6.0;
+        }
+        v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+        mesh->move(x0, dt, v, idx0, x1);
+        idx1.locate(*mesh, x1);
+        x1.transformToCart(*domain);
+        // ---------------------------------------------------------------------
+        // update skeleton points of tracer
+        TracerSkeleton &s = (*tracer)->getSkeleton();
+        vector<SpaceCoord*> &x0s = s.getSpaceCoords(oldTimeIdx);
+        vector<SpaceCoord*> &x1s = s.getSpaceCoords(newTimeIdx);
+        vector<MeshIndex*> &idx0s = s.getMeshIdxs(oldTimeIdx);
+        vector<MeshIndex*> &idx1s = s.getMeshIdxs(newTimeIdx);
+        for (int i = 0; i < x0s.size(); ++i) {
+            if (idx0s[i]->isOnPole()) {
+                idx0s[i]->setMoveOnPole(true);
+                idx1s[i]->setMoveOnPole(true);
+                x0s[i]->transformToPS(*domain);
+            } else {
+                idx0s[i]->setMoveOnPole(false);
+                idx1s[i]->setMoveOnPole(false);
             }
+            // =================================================================
+            // stage 1
+            regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
+            mesh->move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // =================================================================
+            // stage 2
+            regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v2, idx1s[i]);
+            mesh->move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // =================================================================
+            // stage 3
+            regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v3, idx1s[i]);
+            mesh->move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // =================================================================
+            // stage 4
+            regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
+            v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+            mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            x1s[i]->transformToCart(*domain);
+        }
+        // ---------------------------------------------------------------------
+        (*tracer)->updateDeformMatrix(*domain, *mesh, newTimeIdx);
+        if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
+            if (numLongTracer == longTracers.size()) {
+                longTracers.push_back(tracer);
+            } else {
+                longTracers[numLongTracer] = tracer;
+            }
+            numLongTracer++;
         }
     }
 }
@@ -661,6 +654,8 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
             totalMass1[s] += (*tracer)->getSpeciesMass(s);
         }
 #endif
+        vec d1(cell->getNumConnectedTracer(), arma::fill::zeros);
+        vec d2(cell->getNumConnectedTracer(), arma::fill::zeros);
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
             if (tracers[i]->getID() != (*tracer)->getID() &&
                 tracers[i]->getID() != (*tracer)->fatherID &&
@@ -669,22 +664,37 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
                 double cosTheta = norm_dot(y(), y0());
                 double sinTheta = sqrt(1-cosTheta*cosTheta);
                 double n = norm(y(), 2);
-                double d1 = n*cosTheta;
-                double d2 = n*sinTheta;
-                weights[i] = exp(-beta1*d1*d1-beta2*d2*d2);
-#ifdef CHECK_MERGE_TRACER
-                tracers[i]->dump(timeIdx, *domain, file, idx++);
-                tags[i] = 1;
-#endif
+                d1[i] = n*cosTheta;
+                d2[i] = n*sinTheta;
             }
         }
-        double sumWeights = sum(weights);
-        if (sumWeights < 1.0e-15) {
-            REPORT_WARNING("Small parcel is not merged!");
-            continue;
+        double scale = 1;
+        while (true) {
+            weights.zeros();
+            for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
+                if (tracers[i]->getID() != (*tracer)->getID() &&
+                    tracers[i]->getID() != (*tracer)->fatherID &&
+                    tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
+                    weights[i] = exp(-scale*(beta1*d1[i]*d1[i]+beta2*d2[i]*d2[i]));
+                }
+            }
+            double sumWeights = sum(weights);
+            if (sumWeights < 1.0e-15) {
+                scale *= 0.99;
+            } else {
+                weights /= sumWeights;
+                break;
+            }
         }
-        weights /= sumWeights;
 #ifdef CHECK_MERGE_TRACER
+        for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
+            if (tracers[i]->getID() != (*tracer)->getID() &&
+                tracers[i]->getID() != (*tracer)->fatherID &&
+                tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
+                tracers[i]->dump(timeIdx, *domain, file, idx++);
+                tags[i] = 1;
+            }
+        }
         file << "weights = (/";
         arma::uvec tmp = find(tags == 1, 1, "last");
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
@@ -697,9 +707,6 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
             }
         }
         file.close();
-        if ((*tracer)->fatherID == 7988) {
-            CHECK_POINT;
-        }
 #endif
         double volume1 = (*tracer)->getDetH(timeIdx);
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {

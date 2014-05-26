@@ -29,8 +29,8 @@ int main(int argc, const char *argv[])
         }
     } else if (testCaseName == "deform") {
         testCase = new lasm::DeformationTestCase();
-        if (configManager.hasKey("lasm", "sub_case")) {
-            configManager.getValue("lasm", "sub_case", subcaseName);
+        if (configManager.hasKey("lasm", "subcase")) {
+            configManager.getValue("lasm", "subcase", subcaseName);
             testCase->selectSubcase(subcaseName);
         }
     } else if (testCaseName == "barotropic") {
