@@ -18,7 +18,8 @@ public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
 
-    virtual void init(const geomtk::TimeManager &timeManager);
+    virtual void init(const ConfigManager &configManager,
+                      const TimeManager &timeManager);
 
     virtual const Domain& getDomain() const { return *domain; }
     virtual const Mesh& getMesh() const { return *mesh; }

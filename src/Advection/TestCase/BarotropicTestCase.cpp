@@ -10,9 +10,17 @@ BarotropicTestCase::~BarotropicTestCase() {
     REPORT_OFFLINE;
 }
 
-void BarotropicTestCase::init(const geomtk::TimeManager &timeManager) {
-    AdvectionTestCase::init(timeManager);
-    model.init(160, 81);
+void BarotropicTestCase::init(const ConfigManager &configManager,
+                              const TimeManager &timeManager) {
+    AdvectionTestCase::init(configManager, timeManager);
+    int numLon = 160, numLat = 81;
+    if (configManager.hasKey("test_case", "num_lon")) {
+        configManager.getValue("test_case", "num_lon", numLon);
+    }
+    if (configManager.hasKey("test_case", "num_lat")) {
+        configManager.getValue("test_case", "num_lat", numLat);
+    }
+    model.init(numLon, numLat);
     velocity.create(model.getMesh(), false, HAS_HALF_LEVEL);
 
     io.init(timeManager);

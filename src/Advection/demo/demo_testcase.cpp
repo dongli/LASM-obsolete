@@ -41,7 +41,7 @@ int main(int argc, const char *argv[])
     // initialization
     timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
                      testCase->getStepSize());
-    testCase->init(timeManager);
+    testCase->init(configManager, timeManager);
     advectionManager.init(testCase->getDomain(), testCase->getMesh(),
                           configManager, timeManager);
     

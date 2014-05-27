@@ -15,8 +15,9 @@ SolidRotationTestCase::~SolidRotationTestCase() {
     REPORT_OFFLINE;
 }
 
-void SolidRotationTestCase::init(const geomtk::TimeManager &timeManager) {
-    AdvectionTestCase::init(timeManager);
+void SolidRotationTestCase::init(const ConfigManager &configManager,
+                                 const TimeManager &timeManager) {
+    AdvectionTestCase::init(configManager, timeManager);
     // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
@@ -24,7 +25,14 @@ void SolidRotationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    mesh->init(240, 121);
+    int numLon = 240, numLat = 121;
+    if (configManager.hasKey("test_case", "num_lon")) {
+        configManager.getValue("test_case", "num_lon", numLon);
+    }
+    if (configManager.hasKey("test_case", "num_lat")) {
+        configManager.getValue("test_case", "num_lat", numLat);
+    }
+    mesh->init(numLon, numLat);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);

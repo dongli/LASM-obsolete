@@ -14,7 +14,8 @@ public:
     SolidRotationTestCase();
     virtual ~SolidRotationTestCase();
 
-    virtual void init(const geomtk::TimeManager &timeManager);
+    virtual void init(const ConfigManager &configManager,
+                      const TimeManager &timeManager);
 
     Time getStartTime() const;
     Time getEndTime() const;

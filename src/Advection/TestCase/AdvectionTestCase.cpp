@@ -11,7 +11,8 @@ AdvectionTestCase::~AdvectionTestCase() {
     }
 }
 
-void AdvectionTestCase::init(const geomtk::TimeManager &timeManager) {
+void AdvectionTestCase::init(const ConfigManager &configManager,
+                             const TimeManager &timeManager) {
     this->timeManager = &timeManager;
 }
 
