@@ -13,7 +13,6 @@ int main(int argc, const char *argv[])
     lasm::AdvectionManager advectionManager;
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
-    geomtk::StampString *o1;
     // -------------------------------------------------------------------------
     // parse configuration
     configManager.parse(argv[1]);
@@ -38,33 +37,16 @@ int main(int argc, const char *argv[])
     } else {
         REPORT_ERROR("Unknown test_case \"" << testCaseName << "\"!");
     }
-    std::string outputPrefix = "";
-    if (configManager.hasKey("lasm", "output_prefix")) {
-        configManager.getValue("lasm", "output_prefix", outputPrefix);
-    } else {
-        outputPrefix = "tracers."+testCaseName+".";
-        if (isTrueSolution) {
-            outputPrefix += "true.";
-        }
-        int nx, ny;
-        configManager.getValue("lasm", "num_parcel_x", nx);
-        configManager.getValue("lasm", "num_parcel_y", ny);
-        if (subcaseName == "") {
-            outputPrefix += std::to_string(nx)+"x"+std::to_string(ny);
-        } else {
-            outputPrefix += subcaseName+"."+std::to_string(nx)+"x"+std::to_string(ny);
-        }
-    }
-    o1 = new geomtk::StampString(outputPrefix+".", ".nc");
     // -------------------------------------------------------------------------
     // initialization
     timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
                      testCase->getStepSize());
     testCase->init(timeManager);
-    advectionManager.init(testCase->getDomain(), testCase->getMesh(), configManager);
+    advectionManager.init(testCase->getDomain(), testCase->getMesh(),
+                          configManager, timeManager);
     
     testCase->calcInitCond(advectionManager);
-    advectionManager.output(o1->run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
+    advectionManager.output(oldTimeIdx);
     testCase->advance(timeManager.getSeconds(), oldTimeIdx);
     // -------------------------------------------------------------------------
     // integration loop
@@ -80,9 +62,8 @@ int main(int argc, const char *argv[])
         }
         timeManager.advance();
         oldTimeIdx.shift();
-        advectionManager.output(o1->run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
+        advectionManager.output(oldTimeIdx);
     }
     delete testCase;
-    delete o1;
     return 0;
 }

@@ -60,6 +60,9 @@ typedef geomtk::NumericRLLField<double, 2> ScalarField;
 typedef geomtk::NumericRLLField<double, 1> SingleScalarField;
 typedef geomtk::RLLVelocityField VelocityField;
 typedef geomtk::RLLRegrid Regrid;
+typedef geomtk::TimeManager TimeManager;
+typedef geomtk::ConfigManager ConfigManager;
+typedef geomtk::StampString StampString;
 
 #define LASM_USE_SPHERE_DOMAIN
 

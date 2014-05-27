@@ -13,6 +13,7 @@ class AdvectionManager {
 protected:
     const Domain *domain;
     const Mesh *mesh;
+    const TimeManager *timeManager;
     TracerManager tracerManager;
     Field<TracerMeshCell> tracerMeshCells;
     Regrid *regrid; //>! used to interpolate velocity onto tracers
@@ -22,6 +23,8 @@ protected:
     double beta1;     //>! control the merging weight along the major axis
     double beta2;     //>! control the merging weight vertical to the major axis
     bool isMassFixed; //>! control whether use mass fixer
+    
+    StampString *outputFileFormat;
 private:
     // range search parameters
     Tree *cellTree;                 //>! tree data structure for mesh cells for
@@ -48,7 +51,8 @@ public:
      *  @param configManager the configuration manager.
      */
     void init(const Domain &domain, const Mesh &mesh,
-              const geomtk::ConfigManager &configManager);
+              const ConfigManager &configManager,
+              const TimeManager &timeManager);
 
     const Field<TracerMeshCell>& getTracerMeshCells() const {
         return tracerMeshCells;
@@ -75,10 +79,9 @@ public:
     /**
      *  Output tracers on old time level into netCDF file.
      *
-     *  @param fileName   the file name.
      *  @param newTimeIdx the new time level index.
      */
-    void output(const string &fileName, const TimeLevelIndex<2> &newTimeIdx);
+    void output(const TimeLevelIndex<2> &newTimeIdx);
 
     void diagnose(const TimeLevelIndex<2> &timeIdx);
 

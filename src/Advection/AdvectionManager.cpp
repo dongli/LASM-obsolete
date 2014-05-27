@@ -7,6 +7,7 @@ namespace lasm {
 AdvectionManager::AdvectionManager() {
     domain = NULL;
     mesh = NULL;
+    outputFileFormat = NULL;
     regrid = NULL;
     numLongTracer = 0;
     numUnresolvedTracer = 0;
@@ -19,6 +20,9 @@ AdvectionManager::AdvectionManager() {
 }
 
 AdvectionManager::~AdvectionManager() {
+    if (outputFileFormat != NULL) {
+        delete outputFileFormat;
+    }
     if (regrid != NULL) {
         delete regrid;
     }
@@ -27,9 +31,11 @@ AdvectionManager::~AdvectionManager() {
 }
 
 void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
-                            const geomtk::ConfigManager &configManager) {
+                            const ConfigManager &configManager,
+                            const TimeManager &timeManager) {
     this->domain = &domain;
     this->mesh = &mesh;
+    this->timeManager = &timeManager;
     TimeLevelIndex<2> initTimeIdx;
 #ifndef NDEBUG
     assert(initTimeIdx.get() == 0);
@@ -46,6 +52,13 @@ void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
     if (configManager.hasKey("lasm", "is_mass_fixed")) {
         configManager.getValue("lasm", "is_mass_fixed", isMassFixed);
     }
+    string outputFilePrefix;
+    if (configManager.hasKey("lasm", "output_prefix")) {
+        configManager.getValue("lasm", "output_prefix", outputFilePrefix);
+    } else {
+        outputFilePrefix = "lasm";
+    }
+    outputFileFormat = new StampString(outputFilePrefix+".", ".nc");
     // -------------------------------------------------------------------------
     // initialize tracer manager
     tracerManager.init(domain, mesh, configManager);
@@ -119,8 +132,8 @@ void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
     diagnose(timeIdx);
 }
 
-void AdvectionManager::output(const string &fileName,
-                              const TimeLevelIndex<2> &oldTimeIdx) {
+void AdvectionManager::output(const TimeLevelIndex<2> &oldTimeIdx) {
+    string fileName = outputFileFormat->run("%5.5d", timeManager->getNumStep());
     tracerManager.output(fileName, oldTimeIdx);
     // output the tracer density on the mesh
     int ncId, lonDimId, latDimId;
