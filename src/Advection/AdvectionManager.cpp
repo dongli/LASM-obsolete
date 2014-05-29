@@ -514,7 +514,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
 //    std::ofstream file("connected_tracers.txt");
 //    for (int i = 0; i < cell.getNumConnectedTracer(); ++i) {
 //        cout << i+1 << ": " << cell.getConnectedTracers()[i]->getID() << endl;
-//        cell.getConnectedTracers()[i]->outputShape(timeIdx, *domain, file, i);
+//        cell.getConnectedTracers()[i]->dump(timeIdx, *domain, file, i);
 //    }
 //    file.close();
 //    CHECK_POINT;
@@ -679,9 +679,14 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
                 double n = norm(y(), 2);
                 d1[i] = n*cosTheta;
                 d2[i] = n*sinTheta;
+#ifdef CHECK_MERGE_TRACER
+                tracers[i]->dump(timeIdx, *domain, file, idx++);
+                tags[i] = 1;
+#endif
             }
         }
         double scale = 1;
+        int n = 0;
         while (true) {
             weights.zeros();
             for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
@@ -698,16 +703,16 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
                 weights /= sumWeights;
                 break;
             }
-        }
+            n++;
+            if (n > 10000) {
 #ifdef CHECK_MERGE_TRACER
-        for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
-            if (tracers[i]->getID() != (*tracer)->getID() &&
-                tracers[i]->getID() != (*tracer)->fatherID &&
-                tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
-                tracers[i]->dump(timeIdx, *domain, file, idx++);
-                tags[i] = 1;
+                file.close();
+#endif
+                cout << (*tracer)->fatherID << endl;
+                REPORT_ERROR("Iteration number exceeds " << n << "!");
             }
         }
+#ifdef CHECK_MERGE_TRACER
         file << "weights = (/";
         arma::uvec tmp = find(tags == 1, 1, "last");
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {

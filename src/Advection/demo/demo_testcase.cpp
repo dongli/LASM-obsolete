@@ -20,16 +20,16 @@ int main(int argc, const char *argv[])
     // choose test case
     bool isTrueSolution = false;
     std::string testCaseName, subcaseName = "";
-    configManager.getValue("lasm", "test_case", testCaseName);
+    configManager.getValue("test_case", "case_name", testCaseName);
     if (testCaseName == "rotation") {
         testCase = new lasm::SolidRotationTestCase();
-        if (configManager.hasKey("lasm", "is_true_solution")) {
-            configManager.getValue("lasm", "is_true_solution", isTrueSolution);
+        if (configManager.hasKey("test_case", "is_true_solution")) {
+            configManager.getValue("test_case", "is_true_solution", isTrueSolution);
         }
     } else if (testCaseName == "deform") {
         testCase = new lasm::DeformationTestCase();
-        if (configManager.hasKey("lasm", "subcase")) {
-            configManager.getValue("lasm", "subcase", subcaseName);
+        if (configManager.hasKey("test_case", "subcase")) {
+            configManager.getValue("test_case", "subcase", subcaseName);
             testCase->selectSubcase(subcaseName);
         }
     } else if (testCaseName == "barotropic") {

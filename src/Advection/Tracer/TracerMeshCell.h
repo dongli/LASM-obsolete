@@ -9,7 +9,7 @@ namespace lasm {
 class TracerMeshCell {
 protected:
     int ID;
-    SpaceCoord *x;    //>! center grid coordinate
+    SpaceCoord *x;          //>! center grid coordinate
     double volume;          //>! cell volume for converting density and mass
     vector<double> density; //>! species density array
     vector<double> mass;    //>! species mass array

@@ -26,7 +26,7 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     io.init(timeManager);
     fileIdx = io.registerOutputFile(model.getMesh(), "barotropic-output",
                                     geomtk::IOFrequencyUnit::STEPS, 1);
-    io.file(fileIdx).registerOutputField<double, 1, barotropic_model::FULL_DIMENSION>(1, &model.getGeopotentialHeight());
+    io.file(fileIdx).registerOutputField<double, 2, barotropic_model::FULL_DIMENSION>(1, &model.getGeopotentialDepth());
 }
 
 Time BarotropicTestCase::getStartTime() const {
@@ -40,17 +40,17 @@ Time BarotropicTestCase::getEndTime() const {
 }
 
 double BarotropicTestCase::getStepSize() const {
-    return 1*TimeUnit::MINUTES;
+    return 20*TimeUnit::SECONDS;
 }
 
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     SpaceCoord x(2);
     // -------------------------------------------------------------------------
     // set initial condition for barotropic model
-    x.setCoord(120*RAD, 35*RAD);
+    x.setCoord(0*RAD, 35*RAD);
     testCase.addPeak(x, 1500*barotropic_model::G, model.getDomain().getRadius()*0.5);
     testCase.calcInitCond(model);
-    const SingleScalarField &gh = model.getGeopotentialHeight();
+    const ScalarField &gd = model.getGeopotentialDepth();
     // -------------------------------------------------------------------------
     // set initial condition for tracers
     ScalarField *q0; // reference tracer
@@ -67,14 +67,14 @@ void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     q.push_back(new ScalarField); q1 = q.back();
     q1->create("", "", "", model.getMesh(), CENTER);
     for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER); ++i) {
-        (*q1)(timeIdx, i) = gh(i);
+        (*q1)(timeIdx, i) = gd(i);
     }
     // discontinous tracer
     q.push_back(new ScalarField); q2 = q.back();
     q2->create("", "", "", model.getMesh(), CENTER);
     for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER); ++i) {
         model.getMesh().getGridCoord(i, CENTER, x);
-        if (x(0) > 140*RAD && x(0) < 160*RAD &&
+        if (x(0) > 160*RAD && x(0) < 200*RAD &&
             x(1) > 10*RAD  && x(1) < 40*RAD) {
             (*q2)(timeIdx, i) = 1;
         } else {
@@ -93,7 +93,7 @@ void BarotropicTestCase::advance(double time,
         model.integrate(timeIdx-1, getStepSize());
     }
     io.create(fileIdx);
-    io.output<double, 1>(fileIdx, 1, &model.getGeopotentialHeight());
+    io.output<double, 2>(fileIdx, timeIdx, 1, &model.getGeopotentialDepth());
     io.close(fileIdx);
     for (int j = 0; j < model.getMesh().getNumGrid(1, velocity(0).getGridType(1)); ++j) {
         for (int i = 0; i < model.getMesh().getNumGrid(0, velocity(0).getGridType(0)); ++i) {

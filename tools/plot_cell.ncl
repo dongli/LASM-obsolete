@@ -13,7 +13,7 @@ begin
     end_time = 300
     time_step = 300
 
-    file_prefix = "tracers."+test_case+"."+resolution
+    file_prefix = "lasm."+test_case+"."+resolution
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
@@ -40,7 +40,6 @@ begin
                      (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
                      (/0.99,0.09,0.11/)/)
             gsn_define_colormap(wks, cmap)
-            ; gsn_define_colormap(wks, "WhBlGrYeRe")
         end if
         if (ic .eq. "gh") then
             gsn_define_colormap(wks, "WhBlGrYeRe")
@@ -53,9 +52,15 @@ begin
     res@gsnSpreadColors = True
     res@cnLevelSelectionMode = "ManualLevels"
     if (test_case .eq. "barotropic") then
-        res@cnMinLevelValF = 75000
-        res@cnMaxLevelValF = 85000
-        res@cnLevelSpacingF = 500.0
+        if (ic .eq. "step") then
+            res@cnMinLevelValF = 0.0
+            res@cnMaxLevelValF = 1.0
+            res@cnLevelSpacingF = 0.1
+        else
+            res@cnMinLevelValF = 75000
+            res@cnMaxLevelValF = 85000
+            res@cnLevelSpacingF = 500.0
+        end if
     end if
     if (isStrSubset(test_case, "rotation")) then
         res@cnMinLevelValF = 0.0
@@ -64,9 +69,6 @@ begin
     end if
     if (isStrSubset(test_case, "deform")) then
         if (ic .eq. "ch") then
-            ; res@cnMinLevelValF = 0.0
-            ; res@cnMaxLevelValF = 1.0
-            ; res@cnLevelSpacingF = 0.1
             res@cnMinLevelValF = 0.2
             res@cnMaxLevelValF = 0.9
             res@cnLevelSpacingF = 0.1
@@ -75,9 +77,6 @@ begin
             res@cnMinLevelValF = 0.2
             res@cnMaxLevelValF = 0.9
             res@cnLevelSpacingF = 0.1
-            ; res@cnMinLevelValF = 0.0
-            ; res@cnMaxLevelValF = 1.1
-            ; res@cnLevelSpacingF = 0.1
         end if
         if (ic .eq. "gh") then
             res@cnMinLevelValF = 0.0
@@ -95,7 +94,9 @@ begin
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
         if (isStrSubset(test_case, "barotropic")) then
-            q = f->q1
+            if (ic .eq. "step") then
+                q = f->q2
+            end if
         end if
         if (isStrSubset(test_case, "rotation")) then
             q = f->q1/f->q0
@@ -116,6 +117,8 @@ begin
         res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
                              "Max:"+sprintf("%8.5f", max(q))
         plot = gsn_csm_contour_map(wks, q, res)
+
+        frame(wks)
     end do
 
 end
