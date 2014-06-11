@@ -14,17 +14,16 @@ class TracerMeshCell;
  *  field. It derives from parcel.
  */
 class Tracer : public Parcel {
-    friend class TracerManager;
 public:
-    enum BadDeformMatrixType {
-        GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED
+    enum TracerType {
+        GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED, POOR_APPROXIMATION
     };
-    int fatherID;
+    Tracer *father;
 protected:
-    vec density; //>! species density array
-    vec mass;    //>! species mass array
+    vec density;        //>! species density array
+    vec mass;           //>! species mass array
     TracerSkeleton *skeleton;
-    BadDeformMatrixType badType;
+    TracerType type;
     /**
      *  Remapping parameters
      */
@@ -32,8 +31,6 @@ protected:
     vector<TracerMeshCell*> connectedCells;
 
     TracerMeshCell *hostCell;
-
-    static double gammas;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -122,9 +119,9 @@ public:
      */
     TracerSkeleton& getSkeleton() { return *skeleton; }
 
-    void setBadType(BadDeformMatrixType badType) { this->badType = badType; }
+    void setType(TracerType type) { this->type = type; }
 
-    BadDeformMatrixType getBadType() const { return badType; }
+    TracerType getType() const { return type; }
 
     /**
      *  Reset the connected cells to empty for later updating.

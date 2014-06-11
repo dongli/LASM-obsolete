@@ -20,9 +20,6 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
     int numParcelX, numParcelY;
     configManager.getValue("lasm", "num_parcel_x", numParcelX);
     configManager.getValue("lasm", "num_parcel_y", numParcelY);
-    if (configManager.hasKey("lasm", "gammas")) {
-        configManager.getValue("lasm", "gammas", Tracer::gammas);
-    }
     if (configManager.hasKey("lasm", "scale0")) {
         configManager.getValue("lasm", "scale0", scale0);
     }
@@ -176,7 +173,7 @@ const TracerSpeciesInfo& TracerManager::getSpeciesInfo(int speciesIdx) const {
 }
 
 void TracerManager::output(const string &fileName,
-                           const TimeLevelIndex<2> &oldTimeIdx) {
+                           const TimeLevelIndex<2> &timeIdx) {
     int ncId;
     int numTracerDimId, numSkel1DimId, numDimDimId, numSpeciesDimId;
     int idVarId;
@@ -195,7 +192,7 @@ void TracerManager::output(const string &fileName,
     list<Tracer*>::iterator tracer;
 
     if (nc_create(fileName.c_str(), NC_CLOBBER, &ncId) != NC_NOERR) {
-        REPORT_ERROR("Failed to open \"" << fileName << "\"!");
+        REPORT_ERROR("Failed to create \"" << fileName << "\"!");
     }
 
     if (nc_def_dim(ncId, "num_tracer", tracers.size(), &numTracerDimId)
@@ -243,11 +240,6 @@ void TracerManager::output(const string &fileName,
     if (nc_put_att(ncId, NC_GLOBAL, "scale0", NC_DOUBLE, 1, &scale0)
         != NC_NOERR) {
         REPORT_ERROR("Failed to put global dimension \"scale0\"!");
-    }
-
-    if (nc_put_att(ncId, NC_GLOBAL, "gammas", NC_DOUBLE, 1, &Tracer::gammas)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put global dimension \"gammas\"!");
     }
     
     if (nc_def_var(ncId, "id", NC_INT, 1, &numTracerDimId, &idVarId) != NC_NOERR) {
@@ -333,7 +325,7 @@ void TracerManager::output(const string &fileName,
     l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m = 0; m < domain->getNumDim(); ++m) {
-            doubleData[l++] = (*tracer)->getX(oldTimeIdx)(m);
+            doubleData[l++] = (*tracer)->getX(timeIdx)(m);
         }
     }
     if (nc_put_var(ncId, cVarId, doubleData) != NC_NOERR) {
@@ -346,7 +338,7 @@ void TracerManager::output(const string &fileName,
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
             for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                doubleData[l++] = (*tracer)->getH(oldTimeIdx)(m1, m2);
+                doubleData[l++] = (*tracer)->getH(timeIdx)(m1, m2);
             }
         }
     }
@@ -372,7 +364,7 @@ void TracerManager::output(const string &fileName,
         l = 0;
         for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
             TracerSkeleton &s = (*tracer)->getSkeleton();
-            vector<SpaceCoord*> &xs = s.getSpaceCoords(oldTimeIdx);
+            vector<SpaceCoord*> &xs = s.getSpaceCoords(timeIdx);
             for (int i = 0; i < xs.size(); ++i) {
                 for (int m = 0; m < domain->getNumDim(); ++m) {
                     doubleData[l++] = (*xs[i])(m);
@@ -394,7 +386,7 @@ void TracerManager::output(const string &fileName,
                 double theta = i*dtheta;
                 y(0) = cos(theta);
                 y(1) = sin(theta);
-                (*tracer)->getSpaceCoord(*domain, oldTimeIdx, y, x);
+                (*tracer)->getSpaceCoord(*domain, timeIdx, y, x);
                 for (int m = 0; m < domain->getNumDim(); ++m) {
                     doubleData[l++] = x(m);
                 }

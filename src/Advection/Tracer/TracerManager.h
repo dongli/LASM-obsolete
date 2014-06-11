@@ -57,10 +57,10 @@ public:
     /**
      *  Output tracers on old time level into netCDF file.
      *
-     *  @param fileName   the output netCDF file name.
-     *  @param oldTimeIdx the old time level index.
+     *  @param fileName the output netCDF file name.
+     *  @param timeIdx  the time level index.
      */
-    void output(const string &fileName, const TimeLevelIndex<2> &oldTimeIdx);
+    void output(const string &fileName, const TimeLevelIndex<2> &timeIdx);
 };
 
 }

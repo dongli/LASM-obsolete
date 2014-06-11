@@ -4,20 +4,25 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    test_case = "deform"
+    root = "../build/Release"
+    test_case = "deform.case4"
     ic = "sc"
     resolution = "240x120"
-    time_stamp = "%4.4d"
-    run_type = "Release"
-    start_time = 0
+    time_stamp = "%5.5d"
+    start_time = 300
     end_time = 300
     time_step = 300
+
+    ; min_lon = 150.0
+    ; max_lon = 200.0
+    ; min_lat = 30.0
+    ; max_lat = 60.0
 
     file_prefix = "lasm."+test_case+"."+resolution
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/"+run_type+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
+        "do printf '"+root+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
 
     num_time = dimsizes(fs)
 
@@ -27,9 +32,11 @@ begin
         wks = gsn_open_wks("pdf", file_prefix+".cells")
     end if
 
-    if (isStrSubset(test_case, "rotation") .or. \\
-        isStrSubset(test_case, "barotropic")) then
+    if (isStrSubset(test_case, "rotation")) then
         gsn_define_colormap(wks, "WhBlGrYeRe")
+    end if
+    if (isStrSubset(test_case, "barotropic")) then
+        gsn_define_colormap(wks, "GMT_panoply")
     end if
     if (isStrSubset(test_case, "deform")) then
         if (ic .eq. "ch" .or. ic .eq. "sc") then
@@ -47,6 +54,7 @@ begin
     end if
 
     res = True
+    res@gsnFrame = False
     res@cnLinesOn = False
     res@cnFillOn = True
     res@gsnSpreadColors = True
@@ -56,10 +64,11 @@ begin
             res@cnMinLevelValF = 0.0
             res@cnMaxLevelValF = 1.0
             res@cnLevelSpacingF = 0.1
-        else
-            res@cnMinLevelValF = 75000
-            res@cnMaxLevelValF = 85000
-            res@cnLevelSpacingF = 500.0
+        else if (ic .eq. "gd") then
+            res@cnMinLevelValF = 62000
+            res@cnMaxLevelValF = 83000
+            res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/15.0
+        end if
         end if
     end if
     if (isStrSubset(test_case, "rotation")) then
@@ -84,10 +93,19 @@ begin
             res@cnLevelSpacingF = 0.1
         end if
     end if
-    res@mpCenterLonF = 180.0
     res@mpOutlineOn = False
-    res@pmTickMarkDisplayMode = "Always"
     res@lbBoxMinorExtentF = 0.2
+    res@pmTickMarkDisplayMode = "Always"
+    if (.not. isdefined("min_lon")) then
+        res@mpCenterLonF = 180.0
+    else
+        res@mpCenterLonF = (min_lon+max_lon)*0.5
+        res@mpLimitMode = "LatLon"
+        res@mpMinLonF = min_lon
+        res@mpMaxLonF = max_lon
+        res@mpMinLatF = min_lat
+        res@mpMaxLatF = max_lat
+    end if
 
     do l = 0, num_time-1
         system("echo file: "+fs(l))
@@ -96,6 +114,9 @@ begin
         if (isStrSubset(test_case, "barotropic")) then
             if (ic .eq. "step") then
                 q = f->q2
+            end if
+            if (ic .eq. "gd") then
+                q = f->q1
             end if
         end if
         if (isStrSubset(test_case, "rotation")) then

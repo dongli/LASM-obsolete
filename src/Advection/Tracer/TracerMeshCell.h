@@ -107,7 +107,7 @@ public:
 
     int getNumConnectedTracer() const { return numConnectedTracer; }
 
-    vector<Tracer*>& getConnectedTracers() { return connectedTracers; }
+    const vector<Tracer*>& getConnectedTracers() const { return connectedTracers; }
 
     double getRemapWeight(Tracer *tracer) const;
 

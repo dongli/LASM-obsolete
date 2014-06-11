@@ -7,12 +7,15 @@ namespace lasm {
 AdvectionManager::AdvectionManager() {
     domain = NULL;
     mesh = NULL;
+    timeManager = NULL;
     outputFileFormat = NULL;
     regrid = NULL;
-    numLongTracer = 0;
-    numUnresolvedTracer = 0;
+    cellTree = NULL;
+    numTracersNeedSplit = 0;
+    numTracersNeedMerge = 0;
     numVoidCell = 0;
-    alpha = 0.85;
+    gammas = 10;
+    alphas = 0.9;
     beta1 = 1;
     beta2 = 10;
     isMassFixed = true;
@@ -26,7 +29,9 @@ AdvectionManager::~AdvectionManager() {
     if (regrid != NULL) {
         delete regrid;
     }
-    delete cellTree;
+    if (cellTree != NULL) {
+        delete cellTree;
+    }
     REPORT_OFFLINE;
 }
 
@@ -40,8 +45,11 @@ void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
 #ifndef NDEBUG
     assert(initTimeIdx.get() == 0);
 #endif
-    if (configManager.hasKey("lasm", "alpha")) {
-        configManager.getValue("lasm", "alpha", alpha);
+    if (configManager.hasKey("lasm", "gammas")) {
+        configManager.getValue("lasm", "gammas", gammas);
+    }
+    if (configManager.hasKey("lasm", "alphas")) {
+        configManager.getValue("lasm", "alphas", alphas);
     }
     if (configManager.hasKey("lasm", "beta1")) {
         configManager.getValue("lasm", "beta1", beta1);
@@ -147,8 +155,11 @@ void AdvectionManager::output(const TimeLevelIndex<2> &oldTimeIdx) {
     }
     nc_redef(ncId);
     // -------------------------------------------------------------------------
-    if (nc_put_att(ncId, NC_GLOBAL, "alpha", NC_DOUBLE, 1, &alpha) != NC_NOERR){
-        REPORT_ERROR("Failed to put global attribute \"alpha\"!");
+    if (nc_put_att(ncId, NC_GLOBAL, "gammas", NC_DOUBLE, 1, &gammas) != NC_NOERR){
+        REPORT_ERROR("Failed to put global dimension \"gammas\"!");
+    }
+    if (nc_put_att(ncId, NC_GLOBAL, "alphas", NC_DOUBLE, 1, &alphas) != NC_NOERR){
+        REPORT_ERROR("Failed to put global attribute \"alphas\"!");
     }
     if (nc_put_att(ncId, NC_GLOBAL, "beta1", NC_DOUBLE, 1, &beta1) != NC_NOERR){
         REPORT_ERROR("Failed to put global attribute \"beta1\"!");
@@ -255,6 +266,16 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     connectTracersAndMesh(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("connectTracersAndMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+    
+    time1 = clock();
+    remapTracersToMesh(newTimeIdx);
+    time2 = clock();
+    REPORT_NOTICE("remapTracersToMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+    
+    time1 = clock();
+    checkTracerShape(newTimeIdx, velocity);
+    time2 = clock();
+    REPORT_NOTICE("checkTracerShape uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 
     time1 = clock();
     splitTracers(newTimeIdx);
@@ -265,11 +286,6 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     mergeTracers(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("mergeTracers uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
-
-    time1 = clock();
-    remapTracersToMesh(newTimeIdx);
-    time2 = clock();
-    REPORT_NOTICE("remapTracersToMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 }
 
 // -----------------------------------------------------------------------------
@@ -307,7 +323,7 @@ void AdvectionManager::integrate_RK4(double dt,
     TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
     TimeLevelIndex<2> halfTimeIdx = newTimeIdx-0.5;
     double dt05 = 0.5*dt;
-    numLongTracer = 0;
+    numTracersNeedSplit = 0;
     list<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         Velocity v1(domain->getNumDim());
@@ -422,14 +438,6 @@ void AdvectionManager::integrate_RK4(double dt,
         }
         // ---------------------------------------------------------------------
         (*tracer)->updateDeformMatrix(*domain, *mesh, newTimeIdx);
-        if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
-            if (numLongTracer == longTracers.size()) {
-                longTracers.push_back(tracer);
-            } else {
-                longTracers[numLongTracer] = tracer;
-            }
-            numLongTracer++;
-        }
     }
 }
 
@@ -473,34 +481,26 @@ void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
         double weight = ShapeFunction::getMaxValue();
         (*tracer)->getHostCell()->connect(*tracer, weight);
         (*tracer)->connect((*tracer)->getHostCell(), weight);
-// The following codes are commented to ensure the split small tracers are
-// merged by other tracers, and the total tracer number is not increased.
-//        if ((*tracer)->getDetH(timeIdx) < (*tracer)->getHostCell()->getVolume()) {
-//            // tracer is not resolved by the mesh
-//            (*tracer)->setBadType(Tracer::NOT_RESOLVED);
-//            if (numUnresolvedTracer == unresolvedTracers.size()) {
-//                unresolvedTracers.push_back(tracer);
-//            } else {
-//                unresolvedTracers[numUnresolvedTracer] = tracer;
-//            }
-//            numUnresolvedTracer++;
-//        } else {
-//#ifndef NDEBUG
-//            (*tracer)->dump(timeIdx, *domain);
-//            CHECK_POINT;
-//#endif
-//        }
-//    } else if ((*tracer)->getBadType() == Tracer::NOT_RESOLVED) {
-//#ifndef NDEBUG
-//        (*tracer)->dump(timeIdx, *domain);
-//        CHECK_POINT;
-//#endif
-//        (*tracer)->setBadType(Tracer::GOOD_SHAPE);
+        if ((*tracer)->getDetH(timeIdx) < (*tracer)->getHostCell()->getVolume()) {
+            // tracer is not resolved by the mesh
+            recordTracer(Tracer::NOT_RESOLVED, tracer);
+        } else {
+#ifndef NDEBUG
+            (*tracer)->dump(timeIdx, *domain);
+            CHECK_POINT;
+#endif
+        }
+    } else if ((*tracer)->getType() == Tracer::NOT_RESOLVED) {
+#ifndef NDEBUG
+        (*tracer)->dump(timeIdx, *domain);
+        CHECK_POINT;
+#endif
+        (*tracer)->setType(Tracer::GOOD_SHAPE);
     }
 }
 
 void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
-    numUnresolvedTracer = 0;
+    numTracersNeedMerge = 0;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
         tracerMeshCells(timeIdx, i).resetConnectedTracers();
     }
@@ -509,20 +509,53 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         (*tracer)->resetConnectedCells();
         connectTracerAndMesh(timeIdx, tracer);
     }
-// Use the following code to show the connected tracers with the given cell.
-//    TracerMeshCell &cell = tracerMeshCells(timeIdx, 19978);
-//    std::ofstream file("connected_tracers.txt");
-//    for (int i = 0; i < cell.getNumConnectedTracer(); ++i) {
-//        cout << i+1 << ": " << cell.getConnectedTracers()[i]->getID() << endl;
-//        cell.getConnectedTracers()[i]->dump(timeIdx, *domain, file, i);
-//    }
-//    file.close();
-//    CHECK_POINT;
+}
+
+void AdvectionManager::checkTracerShape(const TimeLevelIndex<2> &timeIdx,
+                                        const VelocityField &velocity) {
+//#define CHECK_POOR_APPROXIMATION
+#ifdef CHECK_POOR_APPROXIMATION
+    std::ofstream file("poor_parcels.txt");
+    int idx = 0;
+#endif
+    const VelocityField::FieldType &div = velocity.getDivergence();
+    list<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        double avg = 0;
+        double std = 0;
+        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+            TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
+            avg += div(timeIdx, cell->getID());
+        }
+        avg /= (*tracer)->getNumConnectedCell();
+        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+            TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
+            std += pow(div(timeIdx, cell->getID())-avg, 2);
+        }
+        std = sqrt(std/(*tracer)->getNumConnectedCell());
+        const vec &S = (*tracer)->getS();
+        double gamma = S[0]/S[1];
+        // check the degree of filamentation
+        if (gamma > gammas || (std > 1.0e-6 && gamma > 3)) {
+            recordTracer(Tracer::EXTREME_FILAMENTATION, tracer);
+        }
+//        else if (fabs(avg) > 5.0e-6 && gamma > 5 &&
+//                 (*tracer)->getNumConnectedCell() > 5) {
+//            recordTracer(Tracer::POOR_APPROXIMATION, tracer);
+//#ifdef CHECK_POOR_APPROXIMATION
+//            (*tracer)->dump(timeIdx, *domain, file, idx++);
+//#endif
+//        }
+    }
+#ifdef CHECK_POOR_APPROXIMATION
+    file.close();
+    CHECK_POINT;
+#endif
 }
 
 void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
-    for (int t = 0; t < numLongTracer; ++t) {
-        list<Tracer*>::iterator tracer = longTracers[t];
+    for (int t = 0; t < numTracersNeedSplit; ++t) {
+        list<Tracer*>::iterator tracer = tracersNeedSplit[t];
 //#define CHECK_SPLIT_TRACER
 #ifdef CHECK_SPLIT_TRACER
         std::ofstream file("split_parcel.txt");
@@ -536,10 +569,18 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
         const mat &H = (*tracer)->getH(timeIdx);
         const mat &invH = (*tracer)->getInvH(timeIdx);
         const mat &V = (*tracer)->getV();
-        vec S;
+        vec S = (*tracer)->getS();
+        double alpha;
+        if ((*tracer)->getType() == Tracer::EXTREME_FILAMENTATION) {
+            alpha = alphas;
+        } else if ((*tracer)->getType() == Tracer::POOR_APPROXIMATION) {
+            alpha = 0.5;
+        } else {
+            REPORT_ERROR("Unexpected branch!");
+        }
         // ---------------------------------------------------------------------
         // add two new tracers along major axis of the needle tracer
-        S = (*tracer)->getS(); S[0] *= 1-alpha; S /= sqrt(2.0);
+        S[0] *= 1-alpha; S /= sqrt(2.0);
         SpaceCoord x(domain->getNumDim()), x0(domain->getNumDim());
         BodyCoord y(domain->getNumDim()), y0(domain->getNumDim());
         y0() = invH*H*V.col(0);
@@ -554,16 +595,11 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
         tracer1->resetDeformMatrix(*domain, *mesh, timeIdx, c0, S);
         tracer1->setID(tracerManager.tracers.back()->getID()+1);
         tracerManager.tracers.push_back(tracer1);
-        connectTracerAndMesh(timeIdx, --tracerManager.tracers.end());
-        // merge the small tracer at the same step
-        tracer1->setBadType(Tracer::NOT_RESOLVED);
-        if (numUnresolvedTracer == unresolvedTracers.size()) {
-            unresolvedTracers.push_back(--tracerManager.tracers.end());
-        } else {
-            unresolvedTracers[numUnresolvedTracer] = --tracerManager.tracers.end();
+        if ((*tracer)->getType() == Tracer::EXTREME_FILAMENTATION) {
+            // merge the small tracer at the same step
+            recordTracer(Tracer::NOT_RESOLVED, --tracerManager.tracers.end());
         }
-        numUnresolvedTracer++;
-        tracer1->fatherID = (*tracer)->getID(); // do not merged by the original tracer
+        tracer1->father = *tracer; // do not merged by the original tracer
         // second tracer
         SpaceCoord &c2 = tracer2->getX(timeIdx);
         y() *= -1;
@@ -575,29 +611,22 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
         tracer2->resetDeformMatrix(*domain, *mesh, timeIdx, c0, S);
         tracer2->setID(tracerManager.tracers.back()->getID()+1);
         tracerManager.tracers.push_back(tracer2);
-        connectTracerAndMesh(timeIdx, --tracerManager.tracers.end());
-        // merge the small tracer at the same step
-        tracer2->setBadType(Tracer::NOT_RESOLVED);
-        if (numUnresolvedTracer == unresolvedTracers.size()) {
-            unresolvedTracers.push_back(--tracerManager.tracers.end());
-        } else {
-            unresolvedTracers[numUnresolvedTracer] = --tracerManager.tracers.end();
+        if ((*tracer)->getType() == Tracer::EXTREME_FILAMENTATION) {
+            // merge the small tracer at the same step
+            recordTracer(Tracer::NOT_RESOLVED, --tracerManager.tracers.end());
         }
-        numUnresolvedTracer++;
-        tracer2->fatherID = (*tracer)->getID();
+        tracer2->father = *tracer;
         // ---------------------------------------------------------------------
         // share part of tracer density and mass to the new tracers
         for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
             tracer1->addSpecies();
-            tracer1->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
-            tracer1->calcSpeciesMass(timeIdx, s);
-#ifndef NDEBUG
-            assert(fabs(tracer1->getSpeciesMass(s)-tracer1->getSpeciesDensity(s)*tracer1->getDetH(timeIdx)) < 1.0e-12);
-#endif
             tracer2->addSpecies();
+            tracer1->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
             tracer2->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
+            tracer1->calcSpeciesMass(timeIdx, s);
             tracer2->calcSpeciesMass(timeIdx, s);
 #ifndef NDEBUG
+            assert(fabs(tracer1->getSpeciesMass(s)-tracer1->getSpeciesDensity(s)*tracer1->getDetH(timeIdx)) < 1.0e-12);
             assert(fabs(tracer2->getSpeciesMass(s)-tracer2->getSpeciesDensity(s)*tracer2->getDetH(timeIdx)) < 1.0e-12);
 #endif
         }
@@ -605,12 +634,6 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
         // shrink the old parcel
         S = (*tracer)->getS(); S[0] *= alpha;
         (*tracer)->resetDeformMatrix(*domain, *mesh, timeIdx, c1, S);
-        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
-            TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
-            cell->disconnect(*tracer);
-        }
-        (*tracer)->resetConnectedCells();
-        connectTracerAndMesh(timeIdx, tracer);
         for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
 #ifndef NDEBUG
             double m = (*tracer)->getSpeciesMass(s);
@@ -625,26 +648,26 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
             }
 #endif
         }
-        (*tracer)->setBadType(Tracer::GOOD_SHAPE);
+        (*tracer)->setType(Tracer::GOOD_SHAPE);
         // ---------------------------------------------------------------------
-#ifndef NDEBUG
-        REPORT_NOTICE("Long tracer " << (*tracer)->getID() << " is split into "
-                      << tracer1->getID() << " and " << tracer2->getID() << ".");
-#endif
 #ifdef CHECK_SPLIT_TRACER
         (*tracer)->dump(timeIdx, *domain, file, idx++);
         tracer1->dump(timeIdx, *domain, file, idx++);
         tracer2->dump(timeIdx, *domain, file, idx++);
         file.close();
 #endif
+#ifndef NDEBUG
+        REPORT_NOTICE("Long tracer " << (*tracer)->getID() << " is split into "
+                      << tracer1->getID() << " and " << tracer2->getID() << ".");
+#endif
     }
 }
 
 void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
-    for (int t = 0; t < numUnresolvedTracer; ++t) {
-        list<Tracer*>::iterator tracer = unresolvedTracers[t];
+    for (int t = 0; t < numTracersNeedMerge; ++t) {
+        list<Tracer*>::iterator tracer = tracersNeedMerge[t];
         TracerMeshCell *cell = (*tracer)->getHostCell();
-        vector<Tracer*> &tracers = cell->getConnectedTracers();
+        const vector<Tracer*> &tracers = cell->getConnectedTracers();
         // ---------------------------------------------------------------------
         // merge unresolved tracer
 //#define CHECK_MERGE_TRACER
@@ -669,47 +692,67 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
 #endif
         vec d1(cell->getNumConnectedTracer(), arma::fill::zeros);
         vec d2(cell->getNumConnectedTracer(), arma::fill::zeros);
+        bool found = false;
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
-            if (tracers[i]->getID() != (*tracer)->getID() &&
-                tracers[i]->getID() != (*tracer)->fatherID &&
-                tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
-                (*tracer)->getBodyCoord(*domain, timeIdx, tracers[i]->getX(timeIdx), y);
-                double cosTheta = norm_dot(y(), y0());
-                double sinTheta = sqrt(1-cosTheta*cosTheta);
-                double n = norm(y(), 2);
-                d1[i] = n*cosTheta;
-                d2[i] = n*sinTheta;
-#ifdef CHECK_MERGE_TRACER
-                tracers[i]->dump(timeIdx, *domain, file, idx++);
-                tags[i] = 1;
-#endif
+            if (tracers[i]->getID() == (*tracer)->getID() ||
+                tracers[i] == (*tracer)->father) {
+                continue;
             }
+            Tracer *tmp = NULL;
+            if (tracers[i]->getType() == Tracer::NOT_RESOLVED) {
+                tmp = tracers[i]->father;
+            } else if (tracers[i]->getType() != Tracer::EXTREME_FILAMENTATION) {
+                tmp = tracers[i];
+            } else {
+                REPORT_ERROR("Unexpected branch!");
+            }
+            (*tracer)->getBodyCoord(*domain, timeIdx, tmp->getX(timeIdx), y);
+            double cosTheta = norm_dot(y(), y0());
+            double sinTheta = sqrt(1-cosTheta*cosTheta);
+            double n = norm(y(), 2);
+            d1[i] = n*cosTheta;
+            d2[i] = n*sinTheta;
+            found = true;
+#ifdef CHECK_MERGE_TRACER
+            tmp->dump(timeIdx, *domain, file, idx++);
+            tags[i] = 1;
+#endif
         }
-        double scale = 1;
+        if (!found) {
+#ifdef CHECK_MERGE_TRACER
+            file.close();
+#endif
+            REPORT_WARNING("Tracer " << (*tracer)->getID() << " with father " <<
+                           (*tracer)->father->getID() << " found no surrounding tracers!");
+            continue;
+        }
+        double scale = 1, sumWeights;
         int n = 0;
         while (true) {
             weights.zeros();
             for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
-                if (tracers[i]->getID() != (*tracer)->getID() &&
-                    tracers[i]->getID() != (*tracer)->fatherID &&
-                    tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
+                if (tracers[i]->getID() == (*tracer)->getID() ||
+                    tracers[i] == (*tracer)->father) {
+                    continue;
+                }
+                if (tracers[i]->getType() == Tracer::NOT_RESOLVED ||
+                    tracers[i]->getType() == Tracer::GOOD_SHAPE) {
                     weights[i] = exp(-scale*(beta1*d1[i]*d1[i]+beta2*d2[i]*d2[i]));
                 }
             }
-            double sumWeights = sum(weights);
-            if (sumWeights < 1.0e-15) {
-                scale *= 0.99;
+            sumWeights = sum(weights);
+            if (sumWeights < 1.0e-14) {
+                scale *= 0.8;
             } else {
                 weights /= sumWeights;
                 break;
             }
             n++;
             if (n > 10000) {
-#ifdef CHECK_MERGE_TRACER
-                file.close();
-#endif
-                cout << (*tracer)->fatherID << endl;
-                REPORT_ERROR("Iteration number exceeds " << n << "!");
+                arma::uword maxIdx; weights.max(maxIdx); weights.zeros();
+                weights[maxIdx] = 1;
+                REPORT_WARNING("Iteration number exceeds " << n-1 << "!");
+                break;
             }
         }
 #ifdef CHECK_MERGE_TRACER
@@ -728,38 +771,46 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
 #endif
         double volume1 = (*tracer)->getDetH(timeIdx);
         for (int i = 0; i < cell->getNumConnectedTracer(); ++i) {
-            if (tracers[i]->getID() != (*tracer)->getID() &&
-                tracers[i]->getID() != (*tracer)->fatherID &&
-                tracers[i]->getBadType() == Tracer::GOOD_SHAPE) {
-                double volume2 = tracers[i]->getDetH(timeIdx);
-                double volume = volume1*weights[i]+volume2;
-                const mat &U = tracers[i]->getU();
-                const mat &V = tracers[i]->getV();
-                vec &S = tracers[i]->getS();
-                S *= pow(volume/volume2, 1.0/domain->getNumDim());
-                tracers[i]->getH(timeIdx) = U*diagmat(S)*V.t();
-                tracers[i]->getDetH(timeIdx) = volume;
-                tracers[i]->getInvH(timeIdx) = inv(tracers[i]->getH(timeIdx));
-                tracers[i]->resetSkeleton(*domain, *mesh, timeIdx);
-                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    double m1 = (*tracer)->getSpeciesMass(s);
-                    double &m2 = tracers[i]->getSpeciesMass(s);
+            if (tracers[i]->getID() == (*tracer)->getID() ||
+                tracers[i] == (*tracer)->father) {
+                continue;
+            }
+            Tracer *tmp = NULL;
+            if (tracers[i]->getType() == Tracer::NOT_RESOLVED) {
+                tmp = tracers[i]->father;
+            } else if (tracers[i]->getType() != Tracer::EXTREME_FILAMENTATION) {
+                tmp = tracers[i];
+            } else {
+                REPORT_ERROR("Unexpected branch!");
+            }
+            double volume2 = tmp->getDetH(timeIdx);
+            double volume = volume1*weights[i]+volume2;
+            const mat &U = tmp->getU();
+            const mat &V = tmp->getV();
+            vec &S = tmp->getS();
+            S *= pow(volume/volume2, 1.0/domain->getNumDim());
+            tmp->getH(timeIdx) = U*diagmat(S)*V.t();
+            tmp->getDetH(timeIdx) = volume;
+            tmp->getInvH(timeIdx) = inv(tmp->getH(timeIdx));
+            tmp->resetSkeleton(*domain, *mesh, timeIdx);
+            for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                double m1 = (*tracer)->getSpeciesMass(s);
+                double &m2 = tmp->getSpeciesMass(s);
 #ifndef NDEBUG
-                    totalMass1[s] += m2;
-                    double rho1 = (*tracer)->getSpeciesDensity(s);
-                    double rho2 = tracers[i]->getSpeciesDensity(s);
+                totalMass1[s] += m2;
+                double rho1 = (*tracer)->getSpeciesDensity(s);
+                double rho2 = tmp->getSpeciesDensity(s);
 #endif
-                    m2 = m1*weights[i]+m2;
-                    tracers[i]->calcSpeciesDensity(timeIdx, s);
+                m2 = m1*weights[i]+m2;
+                tmp->calcSpeciesDensity(timeIdx, s);
 #ifndef NDEBUG
-                    totalMass2[s] += m2;
-                    double rho3 = tracers[i]->getSpeciesDensity(s);
-                    assert(((rho1 <= rho3 || (rho1-rho3)/rho1 <= 1.0e-12) &&
-                            (rho3 <= rho2 || (rho3-rho2)/rho2 <= 1.0e-12)) ||
-                           ((rho2 <= rho3 || (rho2-rho3)/rho2 <= 1.0e-12) &&
-                            (rho3 <= rho1 || (rho3-rho1)/rho1 <= 1.0e-12)));
+                totalMass2[s] += m2;
+                double rho3 = tmp->getSpeciesDensity(s);
+                assert(((rho1 <= rho3 || (rho1-rho3)/rho1 <= 1.0e-12) &&
+                        (rho3 <= rho2 || (rho3-rho2)/rho2 <= 1.0e-12)) ||
+                       ((rho2 <= rho3 || (rho2-rho3)/rho2 <= 1.0e-12) &&
+                        (rho3 <= rho1 || (rho3-rho1)/rho1 <= 1.0e-12)));
 #endif
-                }
             }
         }
 #ifndef NDEBUG
@@ -880,7 +931,7 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
             numVoidCell++;
             continue;
         };
-        vector<Tracer*> &tracers = cell.getConnectedTracers();
+        const vector<Tracer*> &tracers = cell.getConnectedTracers();
         double totalWeight = 0;
 #if defined REMAP_DENSITY
         for (int j = 0; j < cell.getNumConnectedTracer(); ++j) {
@@ -938,6 +989,32 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
             tracerMeshCells(timeIdx, i).getSpeciesDensity(s) *= fixer;
         }
         totalMass.getLevel(timeIdx)[s] = expectedTotalMass[s];
+    }
+}
+
+void AdvectionManager::recordTracer(Tracer::TracerType type,
+                                    list<Tracer*>::iterator &tracer) {
+    (*tracer)->setType(type);
+    switch (type) {
+        case Tracer::EXTREME_FILAMENTATION: case Tracer::POOR_APPROXIMATION:
+            if (numTracersNeedSplit == tracersNeedSplit.size()) {
+                tracersNeedSplit.push_back(tracer);
+            } else {
+                tracersNeedSplit[numTracersNeedSplit] = tracer;
+            }
+            numTracersNeedSplit++;
+            break;
+        case Tracer::NOT_RESOLVED:
+            if (numTracersNeedMerge == tracersNeedMerge.size()) {
+                tracersNeedMerge.push_back(tracer);
+            } else {
+                tracersNeedMerge[numTracersNeedMerge] = tracer;
+            }
+            numTracersNeedMerge++;
+            break;
+        default:
+            REPORT_ERROR("Unexpected branch!");
+            break;
     }
 }
 

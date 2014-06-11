@@ -4,13 +4,11 @@
 
 namespace lasm {
 
-double Tracer::gammas = 20;
-
 Tracer::Tracer(int numDim) : Parcel(numDim) {
     skeleton = new TracerSkeleton(this, numDim);
-    badType = GOOD_SHAPE;
+    type = GOOD_SHAPE;
     numConnectedCell = 0;
-    fatherID = -999;
+    father = NULL;
 }
 
 Tracer::~Tracer() {
@@ -89,10 +87,6 @@ void Tracer::updateDeformMatrix(const Domain &domain,
         }
         detH.getLevel(timeIdx) = arma::prod(S);
         *invH.getLevel(timeIdx) = inv(H0);
-        // check the degree of filamentation
-        if (S[0]/S[1] > gammas) {
-            badType = EXTREME_FILAMENTATION;
-        }
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }

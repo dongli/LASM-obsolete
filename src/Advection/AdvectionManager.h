@@ -16,27 +16,30 @@ protected:
     const TimeManager *timeManager;
     TracerManager tracerManager;
     Field<TracerMeshCell> tracerMeshCells;
-    Regrid *regrid; //>! used to interpolate velocity onto tracers
-    TimeLevels<vector<double>, 2> totalMass; //>! tracer species total mass
+    Regrid *regrid;
+    // -------------------------------------------------------------------------
     // key parameters
-    double alpha;     //>! control the location of new split parcels
+    double gammas;    //>! control the tracer filament degree
+    double alphas;    //>! control the location of new split parcels for filament tracer
     double beta1;     //>! control the merging weight along the major axis
     double beta2;     //>! control the merging weight vertical to the major axis
     bool isMassFixed; //>! control whether use mass fixer
-    
+    // -------------------------------------------------------------------------
     StampString *outputFileFormat;
-private:
+    TimeLevels<vector<double>, 2> totalMass;
+    // -------------------------------------------------------------------------
     // range search parameters
     Tree *cellTree;                 //>! tree data structure for mesh cells for
                                     //>! avoiding rebuild of tree each time
     mat cellCoords;                 //>! collection of cell space coordinates
     vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
                                     //>! will modify the order of cells
+    // -------------------------------------------------------------------------
     // some array recording objects need to be processed
-    int numLongTracer;
-    vector<list<Tracer*>::iterator> longTracers;
-    int numUnresolvedTracer;
-    vector<list<Tracer*>::iterator> unresolvedTracers;
+    int numTracersNeedSplit;
+    vector<list<Tracer*>::iterator> tracersNeedSplit;
+    int numTracersNeedMerge;
+    vector<list<Tracer*>::iterator> tracersNeedMerge;
     int numVoidCell;
     vector<TracerMeshCell*> voidCells;
 public:
@@ -54,9 +57,6 @@ public:
               const ConfigManager &configManager,
               const TimeManager &timeManager);
 
-    const Field<TracerMeshCell>& getTracerMeshCells() const {
-        return tracerMeshCells;
-    }
 
     /**
      *  Register a tracer species.
@@ -79,10 +79,15 @@ public:
     /**
      *  Output tracers on old time level into netCDF file.
      *
-     *  @param newTimeIdx the new time level index.
+     *  @param timeIdx the time level index.
      */
-    void output(const TimeLevelIndex<2> &newTimeIdx);
+    void output(const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Diagnose total tracer mass.
+     *
+     *  @param timeIdx the time level index.
+     */
     void diagnose(const TimeLevelIndex<2> &timeIdx);
 
     /**
@@ -108,13 +113,24 @@ private:
      *
      *  @param dt         the time step size.
      *  @param oldTimeIdx the old time level index.
-     *  @param V          the velocity field.
+     *  @param velocity   the velocity field.
      */
     void integrate_RK4(double dt, const TimeLevelIndex<2> &oldTimeIdx,
-                       const VelocityField &V);
+                       const VelocityField &velocity);
 
+    /**
+     *  Find out in which cell the tracer is.
+     *
+     *  @param timeIdx the time level index.
+     */
     void embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Connect one tracer to the mesh grids.
+     *
+     *  @param timeIdx the time step size.
+     *  @param tracer  the tracer iterator.
+     */
     void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
                               list<Tracer*>::iterator &tracer);
 
@@ -126,10 +142,34 @@ private:
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Check the tracer shape.
+     *
+     *  @param timeIdx  the time level index.
+     *  @param velocity the velocity field with divergence.
+     */
+    void checkTracerShape(const TimeLevelIndex<2> &timeIdx,
+                          const VelocityField &velocity);
+
+    /**
+     *  Split the tracers.
+     *
+     *  @param timeIdx the time level index.
+     */
     void splitTracers(const TimeLevelIndex<2> &timeIdx);
-    
+
+    /**
+     *  Merge the tracers.
+     *
+     *  @param timeIdx the time level index.
+     */
     void mergeTracers(const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Handle void cells.
+     *
+     *  @param timeIdx the time level index.
+     */
     void handleVoidCells(const TimeLevelIndex<2> &timeIdx);
 
     /**
@@ -146,7 +186,14 @@ private:
      */
     void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Correct the total mass when remapping tracer density.
+     *
+     *  @param timeIdx the time level index.
+     */
     void correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx);
+
+    void recordTracer(Tracer::TracerType type, list<Tracer*>::iterator &tracer);
 };
 }
 

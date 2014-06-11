@@ -26,7 +26,9 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     io.init(timeManager);
     fileIdx = io.registerOutputFile(model.getMesh(), "barotropic-output",
                                     geomtk::IOFrequencyUnit::STEPS, 1);
-    io.file(fileIdx).registerOutputField<double, 2, barotropic_model::FULL_DIMENSION>(1, &model.getGeopotentialDepth());
+    io.file(fileIdx).registerOutputField<double, 2, barotropic_model::FULL_DIMENSION>
+        (5, &model.getGeopotentialDepth(), &velocity(0), &velocity(1),
+         &velocity.getDivergence(), &velocity.getShearRate()[0]);
 }
 
 Time BarotropicTestCase::getStartTime() const {
@@ -92,9 +94,6 @@ void BarotropicTestCase::advance(double time,
     } else {
         model.integrate(timeIdx-1, getStepSize());
     }
-    io.create(fileIdx);
-    io.output<double, 2>(fileIdx, timeIdx, 1, &model.getGeopotentialDepth());
-    io.close(fileIdx);
     for (int j = 0; j < model.getMesh().getNumGrid(1, velocity(0).getGridType(1)); ++j) {
         for (int i = 0; i < model.getMesh().getNumGrid(0, velocity(0).getGridType(0)); ++i) {
             velocity(0)(timeIdx, i, j) = model.getZonalWind()(timeIdx, i, j);
@@ -110,6 +109,11 @@ void BarotropicTestCase::advance(double time,
     } else {
         velocity.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
+    io.create(fileIdx);
+    io.output<double, 2>(fileIdx, timeIdx, 5, &model.getGeopotentialDepth(),
+                         &velocity(0), &velocity(1), &velocity.getDivergence(),
+                         &velocity.getShearRate()[0]);
+    io.close(fileIdx);
 }
     
 }

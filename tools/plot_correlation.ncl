@@ -20,13 +20,24 @@ end
 
 begin
 
-	file_prefix = "tracers.deform.case4.240x120"
+    check_parcel = True
+    root = "../build/Release"
+	file_prefix = "lasm.deform.case4.240x120"
 
-    f = addfile("../build/Release/"+file_prefix+".0300.nc", "r")
+    f = addfile(root+"/"+file_prefix+".00300.nc", "r")
 
-    q1 = ndtooned(f->q1/f->q0)
-    q2 = ndtooned(f->q2/f->q0)
-    dA = ndtooned(f->volume)
+    if (check_parcel) then
+        q1 = f->rho(:,1)/f->rho(:,0)
+        q2 = f->rho(:,2)/f->rho(:,0)
+        dA = new(dimsizes(f->id), double)
+        do i = 0, dimsizes(f->id)-1
+            dA(i) = f->h(i,0,0)*f->h(i,1,1)-f->h(i,0,1)*f->h(i,1,0)
+        end do
+    else
+        q1 = ndtooned(f->q1/f->q0)
+        q2 = ndtooned(f->q2/f->q0)
+        dA = ndtooned(f->volume)
+    end if
 	A0 = sum(dA)
 
     ; reference curve
@@ -76,6 +87,10 @@ begin
 	l_u = l_u/A0
 	l_o = l_o/A0
 
+    print(l_r)
+    print(l_u)
+    print(l_o)
+
     wks = gsn_open_wks("pdf", file_prefix+".correlation")
 
     res_xy = True
@@ -117,7 +132,7 @@ begin
     res_text@txFontHeightF = 0.015
     res_text@txBackgroundFillColor = "white"
     diag_text = "l~B~r~N~ = "+sprintf("%4.2f", l_r*1.0d4)+"*10~S~-4~N~~C~"+ \
-                "l~B~u~N~ = "+sprintf("%4.2f", l_u*1.0d8)+"*10~S~-8~N~~C~"+ \
+                "l~B~u~N~ = "+sprintf("%4.2f", l_u*1.0d7)+"*10~S~-7~N~~C~"+ \
                 "l~B~o~N~ = "+sprintf("%4.2f", l_o)
 
     res_anno = True
