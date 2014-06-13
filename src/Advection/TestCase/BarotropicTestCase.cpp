@@ -25,10 +25,10 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
 
     io.init(timeManager);
     fileIdx = io.registerOutputFile(model.getMesh(), "barotropic-output",
-                                    geomtk::IOFrequencyUnit::STEPS, 1);
+                                    geomtk::IOFrequencyUnit::STEPS, 10);
     io.file(fileIdx).registerOutputField<double, 2, barotropic_model::FULL_DIMENSION>
         (5, &model.getGeopotentialDepth(), &velocity(0), &velocity(1),
-         &velocity.getDivergence(), &velocity.getShearRate()[0]);
+         &velocity.getDivergence(), &velocity.getVorticity()[0]);
 }
 
 Time BarotropicTestCase::getStartTime() const {
@@ -38,7 +38,7 @@ Time BarotropicTestCase::getStartTime() const {
 
 Time BarotropicTestCase::getEndTime() const {
     Time time;
-    return time+2*TimeUnit::DAYS;
+    return time+1*TimeUnit::DAYS;
 }
 
 double BarotropicTestCase::getStepSize() const {
@@ -112,7 +112,7 @@ void BarotropicTestCase::advance(double time,
     io.create(fileIdx);
     io.output<double, 2>(fileIdx, timeIdx, 5, &model.getGeopotentialDepth(),
                          &velocity(0), &velocity(1), &velocity.getDivergence(),
-                         &velocity.getShearRate()[0]);
+                         &velocity.getVorticity()[0]);
     io.close(fileIdx);
 }
     

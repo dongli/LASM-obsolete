@@ -18,7 +18,7 @@ void TracerMeshCell::resetConnectedTracers() {
     numConnectedTracer = 0;
 }
 
-void TracerMeshCell::connect(Tracer *tracer, double weight) {
+void TracerMeshCell::connect(Tracer *tracer, double weight, double distance) {
 #ifndef NDEBUG
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
@@ -30,9 +30,11 @@ void TracerMeshCell::connect(Tracer *tracer, double weight) {
     if (numConnectedTracer == connectedTracers.size()) {
         connectedTracers.push_back(tracer);
         remapWeights.push_back(weight);
+        remapDistances.push_back(distance);
     } else {
         connectedTracers[numConnectedTracer] = tracer;
         remapWeights[numConnectedTracer] = weight;
+        remapDistances[numConnectedTracer] = distance;
     }
     numConnectedTracer++;
 }
@@ -63,6 +65,15 @@ double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
             return remapWeights[i];
+        }
+    }
+    REPORT_ERROR("Tracer is not connected!");
+}
+
+double TracerMeshCell::getRemapDistance(Tracer *tracer) const {
+    for (int i = 0; i < numConnectedTracer; ++i) {
+        if (connectedTracers[i] == tracer) {
+            return remapDistances[i];
         }
     }
     REPORT_ERROR("Tracer is not connected!");

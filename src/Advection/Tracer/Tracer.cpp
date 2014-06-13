@@ -31,7 +31,7 @@ void Tracer::resetConnectedCells() {
     numConnectedCell = 0;
 }
 
-void Tracer::connect(TracerMeshCell *cell, double weight) {
+void Tracer::connect(TracerMeshCell *cell) {
     if (numConnectedCell == connectedCells.size()) {
         connectedCells.push_back(cell);
     } else {
@@ -82,7 +82,7 @@ void Tracer::updateDeformMatrix(const Domain &domain,
                 double tmp = sqrt(volume/(S[0]*S[1]));
                 S[0] *= tmp; S[1] *= tmp;
                 H0 = U*diagmat(S)*V.t();
-                resetSkeleton(domain, mesh, timeIdx);
+//                resetSkeleton(domain, mesh, timeIdx);
             }
         }
         detH.getLevel(timeIdx) = arma::prod(S);
@@ -90,44 +90,6 @@ void Tracer::updateDeformMatrix(const Domain &domain,
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
-    updateShapeSize(domain, timeIdx);
-}
-
-void Tracer::resetDeformMatrix(const Domain &domain,
-                               const Mesh &mesh,
-                               const TimeLevelIndex<2> &timeIdx,
-                               const SpaceCoord &x, const vec &S) {
-    vec xs1(domain.getNumDim()), xs2(domain.getNumDim());
-    mat &H0 = *H.getLevel(timeIdx);
-#ifdef LASM_USE_SPHERE_DOMAIN
-    domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
-                   *q.getLevel(timeIdx), x, xs1);
-    // x should be one vertex of the major axis
-    xs1 *= S[0]/norm(xs1);
-    if (domain.getNumDim() == 2) {
-        // xs1 -> (1, 0)  xs2 -> (0, 1)
-        xs2[0] = S[1]/S[0];
-        xs2[1] = -xs1[0]*xs2[0]/xs1[1];
-        xs2 *= S[1]/norm(xs2);
-        double cosTheta = xs1[0]/norm(xs1);
-        double sinTheta = xs1[1]/norm(xs1);
-        if (-sinTheta*xs2[0]+cosTheta*xs2[1] < 0) {
-            xs2 *= -1;
-        }
-        H0(0, 0) = xs1[0]; H0(0, 1) = xs2[0];
-        H0(1, 0) = xs1[1]; H0(1, 1) = xs2[1];
-        if (!svd(U, this->S, V, H0)) {
-            REPORT_ERROR("Encounter error with arma::svd!");
-        }
-        detH.getLevel(timeIdx) = arma::prod(S);
-        *invH.getLevel(timeIdx) = inv(H0);
-        resetSkeleton(domain, mesh, timeIdx);
-    } else if (domain.getNumDim() == 3) {
-        REPORT_ERROR("Under construction!");
-    }
-#else
-    REPORT_ERROR("Under construction!");
-#endif
     updateShapeSize(domain, timeIdx);
 }
 

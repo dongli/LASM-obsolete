@@ -19,11 +19,10 @@ protected:
     Regrid *regrid;
     // -------------------------------------------------------------------------
     // key parameters
-    double gammas;    //>! control the tracer filament degree
-    double alphas;    //>! control the location of new split parcels for filament tracer
-    double beta1;     //>! control the merging weight along the major axis
-    double beta2;     //>! control the merging weight vertical to the major axis
-    bool isMassFixed; //>! control whether use mass fixer
+    double filamentLimit;   //>! control the tracer filament degree
+    double radialMixing;    //>! control the radial mixing degree
+    double lateralMixing;   //>! control the lateral mixing degree
+    bool isMassFixed;       //>! control whether use mass fixer
     // -------------------------------------------------------------------------
     StampString *outputFileFormat;
     TimeLevels<vector<double>, 2> totalMass;
@@ -36,10 +35,8 @@ protected:
                                     //>! will modify the order of cells
     // -------------------------------------------------------------------------
     // some array recording objects need to be processed
-    int numTracersNeedSplit;
-    vector<list<Tracer*>::iterator> tracersNeedSplit;
-    int numTracersNeedMerge;
-    vector<list<Tracer*>::iterator> tracersNeedMerge;
+    int numFilamentTracer;
+    vector<list<Tracer*>::iterator> filamentTracers;
     int numVoidCell;
     vector<TracerMeshCell*> voidCells;
 public:
@@ -142,28 +139,15 @@ private:
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
 
-    /**
-     *  Check the tracer shape.
-     *
-     *  @param timeIdx  the time level index.
-     *  @param velocity the velocity field with divergence.
-     */
-    void checkTracerShape(const TimeLevelIndex<2> &timeIdx,
-                          const VelocityField &velocity);
+    void checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
+                           const VelocityField &velocity);
 
     /**
-     *  Split the tracers.
+     *  Handle the filament tracers.
      *
      *  @param timeIdx the time level index.
      */
-    void splitTracers(const TimeLevelIndex<2> &timeIdx);
-
-    /**
-     *  Merge the tracers.
-     *
-     *  @param timeIdx the time level index.
-     */
-    void mergeTracers(const TimeLevelIndex<2> &timeIdx);
+    void handleFilamentTracers(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Handle void cells.
@@ -184,7 +168,8 @@ private:
      *
      *  @param timeIdx the time level index.
      */
-    void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx);
+    void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx,
+                            const VelocityField *velocity = NULL);
 
     /**
      *  Correct the total mass when remapping tracer density.

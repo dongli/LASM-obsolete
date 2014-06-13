@@ -16,7 +16,7 @@ class TracerMeshCell;
 class Tracer : public Parcel {
 public:
     enum TracerType {
-        GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED, POOR_APPROXIMATION
+        GOOD_SHAPE, FILAMENT
     };
     Tracer *father;
 protected:
@@ -132,9 +132,8 @@ public:
      *  Connect the tracer with the given mesh cell.
      *
      *  @param cell   the mesh cell to be connected.
-     *  @param weight the remapping weight.
      */
-    void connect(TracerMeshCell *cell, double weight);
+    void connect(TracerMeshCell *cell);
 
     /**
      *  Get the connected mesh cells.
@@ -175,20 +174,6 @@ public:
     void updateDeformMatrix(const Domain &domain,
                             const Mesh &mesh,
                             const TimeLevelIndex<2> &timeIdx);
-
-    /**
-     *  Reset deformation matrix from given major axis vertex and scale matrix.
-     *
-     *  @param domain  the spatial domain.
-     *  @param mesh    the model mesh.
-     *  @param timeIdx the time level index.
-     *  @param x       the major axis vertex spatial coordinate.
-     *  @param S       the scale matrix.
-     */
-    void resetDeformMatrix(const Domain &domain,
-                           const Mesh &mesh,
-                           const TimeLevelIndex<2> &timeIdx,
-                           const SpaceCoord &x, const vec &S);
 
     /**
      *  Reset tracer skeleton points from deformation matrix

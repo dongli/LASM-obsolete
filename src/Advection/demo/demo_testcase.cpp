@@ -62,7 +62,9 @@ int main(int argc, const char *argv[])
         }
         timeManager.advance();
         oldTimeIdx.shift();
-        advectionManager.output(oldTimeIdx);
+        if (fmod(timeManager.getNumStep(), 10) == 0) {
+            advectionManager.output(oldTimeIdx);
+        }
     }
     delete testCase;
     return 0;
