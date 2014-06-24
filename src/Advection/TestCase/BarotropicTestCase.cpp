@@ -3,6 +3,7 @@
 namespace lasm {
 
 BarotropicTestCase::BarotropicTestCase() {
+    subcase = "case1";
     REPORT_ONLINE;
 }
 
@@ -20,13 +21,16 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     if (configManager.hasKey("test_case", "num_lat")) {
         configManager.getValue("test_case", "num_lat", numLat);
     }
+    if (configManager.hasKey("test_case", "subcase")) {
+        configManager.getValue("test_case", "subcase", subcase);
+    }
     model.init(numLon, numLat);
     velocity.create(model.getMesh(), false, HAS_HALF_LEVEL);
 
     io.init(timeManager);
-    fileIdx = io.registerOutputFile(model.getMesh(), "barotropic-output",
+    fileIdx = io.registerOutputFile(model.getMesh(), "barotropic-testcase",
                                     geomtk::IOFrequencyUnit::STEPS, 10);
-    io.file(fileIdx).registerOutputField<double, 2, barotropic_model::FULL_DIMENSION>
+    io.file(fileIdx).registerOutputField<double, 2, FULL_DIMENSION>
         (5, &model.getGeopotentialDepth(), &velocity(0), &velocity(1),
          &velocity.getDivergence(), &velocity.getVorticity()[0]);
 }
@@ -42,23 +46,42 @@ Time BarotropicTestCase::getEndTime() const {
 }
 
 double BarotropicTestCase::getStepSize() const {
-    return 20*TimeUnit::SECONDS;
+    if (model.getMesh().getNumGrid(0, FULL) == 160 &&
+        model.getMesh().getNumGrid(1, FULL) == 81) {
+        return 1*TimeUnit::MINUTES;
+    } else if (model.getMesh().getNumGrid(0, FULL) == 240 &&
+               model.getMesh().getNumGrid(1, FULL) == 121) {
+        return 20*TimeUnit::SECONDS;
+    } else {
+        REPORT_ERROR("Unspecified time step size!");
+    }
 }
 
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     SpaceCoord x(2);
+    TimeLevelIndex<2> timeIdx;
     // -------------------------------------------------------------------------
     // set initial condition for barotropic model
-    x.setCoord(0*RAD, 35*RAD);
-    testCase.addPeak(x, 1500*barotropic_model::G, model.getDomain().getRadius()*0.5);
-    testCase.calcInitCond(model);
+    if (subcase == "case1") {
+        testCase.calcInitCond(model);
+    } else if (subcase == "case2") {
+        int inputFileIdx = io.registerInputFile(model.getMesh(), "erai_input.nc");
+        io.file(inputFileIdx).registerInputField<double, 2, FULL_DIMENSION>
+            (3, &model.getZonalWind(), &model.getMeridionalWind(), &model.getGeopotentialDepth());
+        io.open(inputFileIdx);
+        io.input<double, 2>(inputFileIdx, timeIdx, 3, &model.getZonalWind(),
+                            &model.getMeridionalWind(), &model.getGeopotentialDepth());
+        io.close(inputFileIdx);
+        model.getZonalWind().applyBndCond(timeIdx);
+        model.getMeridionalWind().applyBndCond(timeIdx);
+        model.getGeopotentialDepth().applyBndCond(timeIdx);
+    }
     const ScalarField &gd = model.getGeopotentialDepth();
     // -------------------------------------------------------------------------
     // set initial condition for tracers
     ScalarField *q0; // reference tracer
     ScalarField *q1; // continuous tracer
     ScalarField *q2; // discontinuous tracer
-    TimeLevelIndex<2> timeIdx;
     // reference tracer
     q.push_back(new ScalarField); q0 = q.back();
     q0->create("", "", "", model.getMesh(), CENTER);

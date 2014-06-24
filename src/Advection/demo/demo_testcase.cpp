@@ -2,21 +2,17 @@
 
 int main(int argc, const char *argv[])
 {
-    // -------------------------------------------------------------------------
     // check arguments
     if (argc != 2) {
         REPORT_ERROR("Wrong usage! A configuration file path is needed.");
     }
-    // -------------------------------------------------------------------------
     geomtk::ConfigManager configManager;
     lasm::AdvectionTestCase *testCase;
     lasm::AdvectionManager advectionManager;
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
-    // -------------------------------------------------------------------------
     // parse configuration
     configManager.parse(argv[1]);
-    // -------------------------------------------------------------------------
     // choose test case
     bool isTrueSolution = false;
     std::string testCaseName, subcaseName = "";
@@ -37,18 +33,16 @@ int main(int argc, const char *argv[])
     } else {
         REPORT_ERROR("Unknown test_case \"" << testCaseName << "\"!");
     }
-    // -------------------------------------------------------------------------
     // initialization
+    testCase->init(configManager, timeManager);
     timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
                      testCase->getStepSize());
-    testCase->init(configManager, timeManager);
     advectionManager.init(testCase->getDomain(), testCase->getMesh(),
                           configManager, timeManager);
     
     testCase->calcInitCond(advectionManager);
     advectionManager.output(oldTimeIdx);
     testCase->advance(timeManager.getSeconds(), oldTimeIdx);
-    // -------------------------------------------------------------------------
     // integration loop
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;

@@ -10,8 +10,6 @@ class BarotropicTestCase : public AdvectionTestCase {
 protected:
     barotropic_model::ToyTestCase testCase;
     barotropic_model::BarotropicModel_A_ImplicitMidpoint model;
-    geomtk::IOManager<geomtk::RLLDataFile> io;
-    int fileIdx;
 public:
     BarotropicTestCase();
     virtual ~BarotropicTestCase();

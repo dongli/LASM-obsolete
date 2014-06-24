@@ -6,19 +6,15 @@ begin
 
     load "../build/Debug/tracer_dump.txt"
 
-    PI = atan(1.0)*4
-    RAD = PI/180
     point_size = 0.005
-    satellite_angle = 8
+    satellite_angle = 2
 
-    min_lon = 150.0
-    max_lon = 200.0
-    min_lat = 30.0
-    max_lat = 60.0
+    ; min_lon = 150.0
+    ; max_lon = 200.0
+    ; min_lat = 30.0
+    ; max_lat = 60.0
 
     wks = gsn_open_wks("pdf", "tracer_dump")
-
-    centroid = centroid/RAD
 
     res_map = True
     res_map@gsnMaximize = False
@@ -46,23 +42,21 @@ begin
 
     ; --------------------------------------------------------------------------
     ; plot neighboring cells
-    if (isdefined("ngb_cells")) then
-        ngb_cells = ngb_cells/RAD
-        dims = dimsizes(ngb_cells)
-        num_ngb_cell = dims(0)
-        res_ngb_cells = True
-        res_ngb_cells@gsMarkerIndex = 16
-        res_ngb_cells@gsMarkerColor = "red"
-        res_ngb_cells@gsMarkerSizeF = point_size
-        do i = 0, num_ngb_cell-1
-            gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
-        end do
-    end if
+    ; if (isdefined("ngb_cells")) then
+    ;     dims = dimsizes(ngb_cells)
+    ;     num_ngb_cell = dims(0)
+    ;     res_ngb_cells = True
+    ;     res_ngb_cells@gsMarkerIndex = 16
+    ;     res_ngb_cells@gsMarkerColor = "red"
+    ;     res_ngb_cells@gsMarkerSizeF = point_size
+    ;     do i = 0, num_ngb_cell-1
+    ;         gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
+    ;     end do
+    ; end if
 
     ; --------------------------------------------------------------------------
     ; plot neighboring tracers
     ; if (isdefined("ngb_tracers")) then
-    ;     ngb_tracers = ngb_tracers/RAD
     ;     dims = dimsizes(ngb_tracers)
     ;     num_ngb_tracer = dims(0)
     ;     res_ngb_tracers = True
@@ -76,7 +70,6 @@ begin
 
     ; --------------------------------------------------------------------------
     ; plot parcel shape
-    shape = shape/RAD
     res_shape = True
     res_shape@gsMarkerIndex = 16
     res_shape@gsLineColor = "black"
@@ -89,6 +82,14 @@ begin
     res_centroid@gsMarkerIndex = 5
     res_centroid@gsMarkerSizeF = point_size
     gsn_polymarker(wks, map, centroid(0), centroid(1), res_centroid)
+
+    ; --------------------------------------------------------------------------
+    ; plot skeleton points
+    res_skel = True
+    res_skel@gsMarkerIndex = 16
+    res_skel@gsMarkerSizeF = 5
+    res_skel@gsMarkerColor = "green"
+    gsn_polymarker(wks, map, skel_points(:,0), skel_points(:,1), res_skel)
 
     frame(wks)
 

@@ -7,14 +7,14 @@ begin
 	file_prefix = "barotropic-output"
     run_type = "Release"
     time_stamp = "%5.5d"
-    start_time = 3740
-    end_time = 3740
-    time_step = 1
+    start_time = 4700
+    end_time = 4700
+    time_step = 10
 
-    min_lon = 150.0
-    max_lon = 200.0
-    min_lat = 30.0
-    max_lat = 60.0
+    min_lon = 120.0
+    max_lon = 270.0
+    min_lat = 10.0
+    max_lat = 80.0
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
@@ -54,17 +54,17 @@ begin
         ; plot = gsn_csm_contour_map(wks, f->div(0,:,:), res)
         ; frame(wks)
 
-        ; res@cnMinLevelValF = -1.0e-4
-        ; res@cnMaxLevelValF =  1.0e-4
-        ; res@cnLevelSpacingF = 1.0e-5
-        ; plot = gsn_csm_contour_map(wks, f->shr_xy(0,:,:), res)
-        ; frame(wks)
-
-        res@cnMinLevelValF = 62000.0
-        res@cnMaxLevelValF = 84000.0
-        res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
-        plot = gsn_csm_contour_map(wks, f->gd(0,:,:), res)
+        res@cnMinLevelValF = -1.0e-4
+        res@cnMaxLevelValF =  1.0e-4
+        res@cnLevelSpacingF = 1.0e-6
+        plot = gsn_csm_contour_map(wks, f->vor_xy(0,:,:), res)
         frame(wks)
+
+        ; res@cnMinLevelValF = 62000.0
+        ; res@cnMaxLevelValF = 84000.0
+        ; res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
+        ; plot = gsn_csm_contour_map(wks, f->gd(0,:,:), res)
+        ; frame(wks)
 	end do
 
 end

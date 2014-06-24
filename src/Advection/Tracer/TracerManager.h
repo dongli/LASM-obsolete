@@ -14,7 +14,7 @@ class TracerManager {
     friend class AdvectionManager;
 protected:
     const Domain *domain;
-    list<Tracer*> tracers;
+    vector<Tracer*> tracers;
     vector<TracerSpeciesInfo*> speciesInfos;
     double scale0; //>! initial parcel size scale (relative to grid cell)
 public:
@@ -33,8 +33,6 @@ public:
 
     void registerTracer(const string &name, const string &units,
                         const string &brief);
-
-    const list<Tracer*>& getTracers() { return tracers; }
 
     /**
      *  Return the tracer species index based on the given name.

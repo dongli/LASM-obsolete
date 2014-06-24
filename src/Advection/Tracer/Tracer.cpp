@@ -7,12 +7,15 @@ namespace lasm {
 Tracer::Tracer(int numDim) : Parcel(numDim) {
     skeleton = new TracerSkeleton(this, numDim);
     type = GOOD_SHAPE;
+    vy = new BodyCoord(numDim);
+    vx = new SpaceCoord(numDim);
     numConnectedCell = 0;
-    father = NULL;
 }
 
 Tracer::~Tracer() {
     delete skeleton;
+    delete vy;
+    delete vx;
 }
 
 Tracer& Tracer::operator=(const Tracer &other) {
@@ -82,15 +85,26 @@ void Tracer::updateDeformMatrix(const Domain &domain,
                 double tmp = sqrt(volume/(S[0]*S[1]));
                 S[0] *= tmp; S[1] *= tmp;
                 H0 = U*diagmat(S)*V.t();
-//                resetSkeleton(domain, mesh, timeIdx);
             }
         }
         detH.getLevel(timeIdx) = arma::prod(S);
         *invH.getLevel(timeIdx) = inv(H0);
+        (*vy)() = *invH.getLevel(timeIdx)*H0*V.col(0);
+        getSpaceCoord(domain, timeIdx, *vy, *vx);
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
     updateShapeSize(domain, timeIdx);
+}
+
+void Tracer::updateDeformMatrix(const Domain &domain,
+                                const TimeLevelIndex<2> &timeIdx) {
+    mat &H0 = *H.getLevel(timeIdx);
+    H0 = U*diagmat(S)*V.t();
+    detH.getLevel(timeIdx) = arma::prod(S);
+    *invH.getLevel(timeIdx) = inv(H0);
+    (*vy)() = *invH.getLevel(timeIdx)*H0*V.col(0);
+    getSpaceCoord(domain, timeIdx, *vy, *vx);
 }
 
 void Tracer::resetSkeleton(const Domain &domain, const Mesh &mesh,
@@ -125,15 +139,15 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         y(0) = cos(theta);
         y(1) = sin(theta);
         getSpaceCoord(domain, timeIdx, y, x);
-        shape[i] = x()/RAD;
+        shape[i] = x();
     }
     for (int m = 0; m < 2; ++m) {
         file << "shape" << idx << "(:," << m << ") = (/";
         for (int i = 0; i < shape.size(); ++i) {
             if (i != shape.size()-1) {
-                file << shape[i][m] << ",";
+                file << shape[i][m]/RAD << ",";
             } else {
-                file << shape[i][m] << "/)" << endl;
+                file << shape[i][m]/RAD << "/)" << endl;
             }
         }
     }
@@ -147,9 +161,9 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
             for (int i = 0; i < numConnectedCell; ++i) {
                 TracerMeshCell *cell = connectedCells[i];
                 if (i != numConnectedCell-1) {
-                    file << cell->getCoord()(m) << ",";
+                    file << cell->getCoord()(m)/RAD << ",";
                 } else {
-                    file << cell->getCoord()(m) << "/)" << endl;
+                    file << cell->getCoord()(m)/RAD << "/)" << endl;
                 }
             }
         }
@@ -171,9 +185,9 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
                 vector<Tracer*> &tracers = cell->getContainedTracers();
                 for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
                     if (k != numNeighborTracer-1) {
-                        file << tracers[j]->getX(timeIdx)(m) << ",";
+                        file << tracers[j]->getX(timeIdx)(m)/RAD << ",";
                     } else {
-                        file << tracers[j]->getX(timeIdx)(m) << "/)" << endl;
+                        file << tracers[j]->getX(timeIdx)(m)/RAD << "/)" << endl;
                     }
                     k++;
                 }
@@ -186,7 +200,20 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
     std::ofstream file; file.open("tracer_dump.txt");
     // -------------------------------------------------------------------------
     // centroid location
-    file << "centroid = (/" << getX(timeIdx)(0) << "," << getX(timeIdx)(1) << "/)" << endl;
+    file << "centroid = (/" << getX(timeIdx)(0)/RAD << "," << getX(timeIdx)(1)/RAD << "/)" << endl;
+    // -------------------------------------------------------------------------
+    // skeleton points
+    file << "skel_points = new((/4,2/), double)" << endl;
+    for (int m = 0; m < 2; ++m) {
+        file << "skel_points(:," << m << ") = (/";
+        for (int i = 0; i < skeleton->getSpaceCoords(timeIdx).size(); ++i) {
+            if (i != 3) {
+                file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD << ",";
+            } else {
+                file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD << "/)" << endl;
+            }
+        }
+    }
     // -------------------------------------------------------------------------
     // neighbor cell locations
     if (numConnectedCell != 0) {
@@ -196,9 +223,9 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
             for (int i = 0; i < numConnectedCell; ++i) {
                 TracerMeshCell *cell = connectedCells[i];
                 if (i != numConnectedCell-1) {
-                    file << cell->getCoord()(m) << ",";
+                    file << cell->getCoord()(m)/RAD << ",";
                 } else {
-                    file << cell->getCoord()(m) << "/)" << endl;
+                    file << cell->getCoord()(m)/RAD << "/)" << endl;
                 }
             }
         }
@@ -219,9 +246,9 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
                 vector<Tracer*> &tracers = cell->getContainedTracers();
                 for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
                     if (k != numNeighborTracer-1) {
-                        file << tracers[j]->getX(timeIdx)(m) << ",";
+                        file << tracers[j]->getX(timeIdx)(m)/RAD << ",";
                     } else {
-                        file << tracers[j]->getX(timeIdx)(m) << "/)" << endl;
+                        file << tracers[j]->getX(timeIdx)(m)/RAD << "/)" << endl;
                     }
                     k++;
                 }
@@ -247,9 +274,9 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
         file << "shape(:," << m << ") = (/";
         for (int i = 0; i < shape.size(); ++i) {
             if (i != shape.size()-1) {
-                file << shape[i][m] << ",";
+                file << shape[i][m]/RAD << ",";
             } else {
-                file << shape[i][m] << "/)" << endl;
+                file << shape[i][m]/RAD << "/)" << endl;
             }
         }
     }

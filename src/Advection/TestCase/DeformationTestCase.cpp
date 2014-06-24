@@ -4,7 +4,7 @@ namespace lasm {
 
 DeformationTestCase::DeformationTestCase() {
     subcase = "case4";
-    period = 5.0;
+    period = 5;
     REPORT_ONLINE;
 }
 
@@ -20,7 +20,7 @@ void DeformationTestCase::init(const ConfigManager &configManager,
     // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
-    domain->setRadius(1.0);
+    domain->setRadius(1);
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
@@ -35,6 +35,13 @@ void DeformationTestCase::init(const ConfigManager &configManager,
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
+    // initialize IO manager
+    io.init(timeManager);
+    fileIdx = io.registerOutputFile(*mesh, "deform-testcase",
+                                    geomtk::IOFrequencyUnit::STEPS, 10);
+    io.file(fileIdx).registerOutputField<double, 2, FULL_DIMENSION>
+        (4, &velocity(0), &velocity(1),
+         &velocity.getDivergence(), &velocity.getVorticity()[0]);
 }
 
 Time DeformationTestCase::getStartTime() const {
@@ -129,6 +136,10 @@ void DeformationTestCase::advance(double time,
     } else {
         velocity.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
+    io.create(fileIdx);
+    io.output<double, 2>(fileIdx, timeIdx, 4, &velocity(0), &velocity(1),
+                         &velocity.getDivergence(), &velocity.getVorticity()[0]);
+    io.close(fileIdx);
 }
 
 void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {

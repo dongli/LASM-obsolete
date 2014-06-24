@@ -18,23 +18,28 @@ void TracerMeshCell::resetConnectedTracers() {
     numConnectedTracer = 0;
 }
 
-void TracerMeshCell::connect(Tracer *tracer, double weight, double distance) {
-#ifndef NDEBUG
+bool TracerMeshCell::isConnected(Tracer *tracer) {
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
-            REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
-                         ") has already been connected!");
+            return true;
         }
+    }
+    return false;
+}
+    
+void TracerMeshCell::connect(Tracer *tracer, double weight) {
+#ifndef NDEBUG
+    if (isConnected(tracer)) {
+        REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
+                     ") has already been connected!");
     }
 #endif
     if (numConnectedTracer == connectedTracers.size()) {
         connectedTracers.push_back(tracer);
         remapWeights.push_back(weight);
-        remapDistances.push_back(distance);
     } else {
         connectedTracers[numConnectedTracer] = tracer;
         remapWeights[numConnectedTracer] = weight;
-        remapDistances[numConnectedTracer] = distance;
     }
     numConnectedTracer++;
 }
@@ -65,15 +70,6 @@ double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
             return remapWeights[i];
-        }
-    }
-    REPORT_ERROR("Tracer is not connected!");
-}
-
-double TracerMeshCell::getRemapDistance(Tracer *tracer) const {
-    for (int i = 0; i < numConnectedTracer; ++i) {
-        if (connectedTracers[i] == tracer) {
-            return remapDistances[i];
         }
     }
     REPORT_ERROR("Tracer is not connected!");

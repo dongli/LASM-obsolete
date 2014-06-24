@@ -16,9 +16,10 @@ class TracerMeshCell;
 class Tracer : public Parcel {
 public:
     enum TracerType {
-        GOOD_SHAPE, FILAMENT
+        GOOD_SHAPE, NEED_MIXING
     };
-    Tracer *father;
+    double actualFilamentLimit;
+    double actualLateralMixing;
 protected:
     vec density;        //>! species density array
     vec mass;           //>! species mass array
@@ -29,6 +30,9 @@ protected:
      */
     int numConnectedCell;
     vector<TracerMeshCell*> connectedCells;
+
+    BodyCoord *vy;  //>! long axis vertex body coordinate
+    SpaceCoord *vx; //>! long axis vertex space coordinate
 
     TracerMeshCell *hostCell;
 public:
@@ -94,12 +98,14 @@ public:
     }
 
     void resetSpecies() {
-        for (int s = 0; s < density.size(); ++s) {
-            density[s] = 0.0;
-        }
+        density.zeros();
     }
 
     Tracer& operator=(const Tracer &other);
+
+    const BodyCoord& getLongAxisVertexBodyCoord() const { return *vy; }
+
+    SpaceCoord& getLongAxisVertexSpaceCoord() { return *vx; }
 
     /**
      *  Get the mesh index of tracer.
@@ -173,6 +179,9 @@ public:
      */
     void updateDeformMatrix(const Domain &domain,
                             const Mesh &mesh,
+                            const TimeLevelIndex<2> &timeIdx);
+
+    void updateDeformMatrix(const Domain &domain,
                             const TimeLevelIndex<2> &timeIdx);
 
     /**

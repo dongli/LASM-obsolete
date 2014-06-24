@@ -40,6 +40,7 @@ using geomtk::TimeUnit;
 const int FULL = geomtk::RLLStagger::GridType::FULL;
 const int HALF = geomtk::RLLStagger::GridType::HALF;
 const int CENTER = geomtk::RLLStagger::Location::CENTER;
+const int FULL_DIMENSION = geomtk::RLLSpaceDimensions::FULL_DIMENSION;
 
 // shortcuts for MLPACK classes
 typedef mlpack::tree::BinarySpaceTree<

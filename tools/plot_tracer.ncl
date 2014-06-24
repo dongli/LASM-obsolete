@@ -37,13 +37,14 @@ begin
 
     gsn_define_colormap(wks, "GMT_panoply")
     colormap = gsn_retrieve_colormap(wks)
-    levels = flt2dble(fspan(61000, 86000, 11))
+    levels = flt2dble(fspan(61000, 84000, 15))
     colors = span_color_indexes(colormap, dimsizes(levels))
 
     res_map = True
     res_map@gsnFrame = False
     res_map@mpCenterLonF = 180.0
     res_map@mpOutlineOn = False
+    res_map@mpFillOn = False
     res_map@pmTickMarkDisplayMode = "Always"
 
     res_tracer = True
@@ -57,15 +58,19 @@ begin
 
     res_s2 = True
     res_s2@gsMarkerIndex = 16
-    res_s2@gsLineColor = "red"
+    res_s2@gsLineColor = "black"
     res_s2@gsLineThicknessF = line_thickness
 
-    ; check = (/17108/)
+    ; check = ispan(15000, 18000, 10)
     ; check_colors = "green"
-    min_lon = 150.0
-    max_lon = 200.0
-    min_lat = 30.0
-    max_lat = 60.0
+    ; min_lon = 120.0
+    ; max_lon = 270.0
+    ; min_lat = 10.0
+    ; max_lat = 80.0
+    min_lon = 0
+    max_lon = 360
+    min_lat = -90
+    max_lat = 90
 
     do l = 0, num_time-1
         system("echo file: "+fs(l))
@@ -79,9 +84,9 @@ begin
         id = f->id
         c = f->c/RAD
         ; res_map@gsnPolar = "NH"
-        ; res_map@mpMinLatF = 0
+        ; res_map@mpMinLatF = 70
         ; res_map@gsnPolar = "SH"
-        ; res_map@mpMaxLatF = -45.0
+        ; res_map@mpMaxLatF = -60.0
         ; if (isdefined("check")) then
         ;     i = ind(id .eq. check(0))
         ;     if (ismissing(i)) then
@@ -102,10 +107,10 @@ begin
             res_map@mpMaxLonF = max_lon
             res_map@mpMinLatF = min_lat
             res_map@mpMaxLatF = max_lat
-            res_map@mpGridAndLimbOn = True
-            res_map@mpGridLineColor = "grey"
-            res_map@mpGridLonSpacingF = 1.5
-            res_map@mpGridLatSpacingF = 1.5
+            ; res_map@mpGridAndLimbOn = True
+            ; res_map@mpGridLineColor = "grey"
+            ; res_map@mpGridLonSpacingF = 1.5
+            ; res_map@mpGridLatSpacingF = 1.5
         end if
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
@@ -125,14 +130,14 @@ begin
         ; end do
         ; draw the shape within a region
         if (isdefined("min_lon")) then
-            do i = 0, num_tracer-1, 1
+            do i = 0, num_tracer-1, 2
                 if (c(i,0) .ge. min_lon .and. c(i,0) .le. max_lon .and. \
                     c(i,1) .ge. min_lat .and. c(i,1) .le. max_lat) then
                     do j = 0, num_skel2-1
                         s2(:,j) = f->s2(i,j,:)/RAD
                     end do
                     s2(:,num_skel2) = s2(:,0)
-                    res_s2@gsLineColor = get_color_index(colormap, levels, f->rho(i,1))
+                    ; res_s2@gsLineColor = get_color_index(colormap, levels, f->rho(i,1))
                     gsn_polyline(wks, map, s2(0,:), s2(1,:), res_s2)
                 end if
             end do

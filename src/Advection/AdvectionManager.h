@@ -22,6 +22,7 @@ protected:
     double filamentLimit;   //>! control the tracer filament degree
     double radialMixing;    //>! control the radial mixing degree
     double lateralMixing;   //>! control the lateral mixing degree
+    double shrinkFactor;    //>! control the mixed parcel shrinking degree
     bool isMassFixed;       //>! control whether use mass fixer
     // -------------------------------------------------------------------------
     StampString *outputFileFormat;
@@ -35,8 +36,8 @@ protected:
                                     //>! will modify the order of cells
     // -------------------------------------------------------------------------
     // some array recording objects need to be processed
-    int numFilamentTracer;
-    vector<list<Tracer*>::iterator> filamentTracers;
+    int numMixedTracer;
+    vector<Tracer*> mixedTracers;
     int numVoidCell;
     vector<TracerMeshCell*> voidCells;
 public:
@@ -128,8 +129,7 @@ private:
      *  @param timeIdx the time step size.
      *  @param tracer  the tracer iterator.
      */
-    void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
-                              list<Tracer*>::iterator &tracer);
+    void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx, Tracer *tracer);
 
     /**
      *  Prepare the bidirectional remapping between tracers and mesh. Find out
@@ -143,18 +143,18 @@ private:
                            const VelocityField &velocity);
 
     /**
-     *  Handle the filament tracers.
+     *  Mix tracer with its surrounding tracers.
      *
      *  @param timeIdx the time level index.
      */
-    void handleFilamentTracers(const TimeLevelIndex<2> &timeIdx);
+    void mixTracers(const TimeLevelIndex<2> &timeIdx);
 
     /**
-     *  Handle void cells.
+     *  Fill void cells by tracer densities on their neighbors.
      *
      *  @param timeIdx the time level index.
      */
-    void handleVoidCells(const TimeLevelIndex<2> &timeIdx);
+    void fillVoidCells(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Remap the tracer mass from mesh cells to tracers.
@@ -178,7 +178,7 @@ private:
      */
     void correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx);
 
-    void recordTracer(Tracer::TracerType type, list<Tracer*>::iterator &tracer);
+    void recordTracer(Tracer::TracerType type, Tracer *tracer);
 };
 }
 

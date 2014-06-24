@@ -56,16 +56,16 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
     REPORT_ERROR("Under construction!");
 #endif
     tracers.resize(numParcel);
-    int ID = 0;
-    list<Tracer*>::iterator tracer = tracers.begin();
-    for (; tracer != tracers.end(); ++tracer) {
-        *tracer = new Tracer(domain.getNumDim());
-        (*tracer)->setID(ID++);
+    int id = 0;
+    for (int t = 0; t < tracers.size(); ++t) {
+        tracers[t] = new Tracer(domain.getNumDim());
+        tracers[t]->setID(id++);
     }
     TimeLevelIndex<2> initTimeIdx;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+    for (int t = 0; t < tracers.size(); ++t) {
+        Tracer *tracer = tracers[t];
         // set coordinate
-        SpaceCoord &x0 = (*tracer)->getX(initTimeIdx);
+        SpaceCoord &x0 = tracer->getX(initTimeIdx);
         vec h(domain.getNumDim());
 #ifdef LASM_USE_SPHERE_DOMAIN
 #ifdef USE_FULL_LAT_LON
@@ -74,7 +74,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         int l = 0;
         for (int j = 0; j < numParcelY; ++j) {
             for (int i = 0; i < numParcelX; ++i) {
-                if (l == (*tracer)->getID()) {
+                if (l == tracer->getID()) {
                     double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
                     double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
                     x0.setCoord(lon, lat);
@@ -105,7 +105,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
                 if (numParcelX_%2 != 0) numParcelX_++;
             }
             for (int i = 0; i < numParcelX_; ++i) {
-                if (l == (*tracer)->getID()) {
+                if (l == tracer->getID()) {
                     dlon = domain.getAxisSpan(0)/numParcelX_;
                     double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
                     x0.setCoord(lon, lat);
@@ -128,7 +128,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         REPORT_ERROR("Under construction!");
 #endif
         // set mesh index
-        MeshIndex &idx0 = (*tracer)->getMeshIndex(initTimeIdx);
+        MeshIndex &idx0 = tracer->getMeshIndex(initTimeIdx);
         idx0.locate(mesh, x0);
         // TODO: This may be unnecessary.
         // when tracer is on Pole, transform its coordinate to PS for later use
@@ -136,10 +136,10 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
             x0.transformToPS(domain);
         }
         // set tracer skeleton
-        (*tracer)->getSkeleton().init(domain, mesh, h.max());
+        tracer->getSkeleton().init(domain, mesh, h.max());
         // set deformation matrix
-        (*tracer)->getH(initTimeIdx).eye();
-        (*tracer)->updateDeformMatrix(domain, mesh, initTimeIdx);
+        tracer->getH(initTimeIdx).eye();
+        tracer->updateDeformMatrix(domain, mesh, initTimeIdx);
     }
     // -------------------------------------------------------------------------
     REPORT_NOTICE(numParcel << " tracers are initialized.");
@@ -148,9 +148,8 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
 void TracerManager::registerTracer(const string &name, const string &units,
                                    const string &brief) {
     speciesInfos.push_back(new TracerSpeciesInfo(name, units, brief));
-    list<Tracer*>::iterator tracer;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
-        (*tracer)->addSpecies();
+    for (int t = 0; t < tracers.size(); ++t) {
+        tracers[t]->addSpecies();
     }
     REPORT_NOTICE("\"" << name << "\" is registered.");
 }
@@ -313,8 +312,8 @@ void TracerManager::output(const string &fileName,
     // -------------------------------------------------------------------------
     intData = new int[tracers.size()];
     l = 0;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
-        intData[l++] = (*tracer)->getID();
+    for (int t = 0; t < tracers.size(); ++t) {
+        intData[l++] = tracers[t]->getID();
     }
     if (nc_put_var(ncId, idVarId, intData) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
@@ -323,9 +322,9 @@ void TracerManager::output(const string &fileName,
     
     doubleData = new double[tracers.size()*domain->getNumDim()];
     l = 0;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+    for (int t = 0; t < tracers.size(); ++t) {
         for (int m = 0; m < domain->getNumDim(); ++m) {
-            doubleData[l++] = (*tracer)->getX(timeIdx)(m);
+            doubleData[l++] = tracers[t]->getX(timeIdx)(m);
         }
     }
     if (nc_put_var(ncId, cVarId, doubleData) != NC_NOERR) {
@@ -335,10 +334,10 @@ void TracerManager::output(const string &fileName,
 
     doubleData = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
     l = 0;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+    for (int t = 0; t < tracers.size(); ++t) {
         for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
             for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                doubleData[l++] = (*tracer)->getH(timeIdx)(m1, m2);
+                doubleData[l++] = tracers[t]->getH(timeIdx)(m1, m2);
             }
         }
     }
@@ -349,9 +348,9 @@ void TracerManager::output(const string &fileName,
     
     doubleData = new double[tracers.size()*getNumSpecies()];
     l = 0;
-    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+    for (int t = 0; t < tracers.size(); ++t) {
         for (int s = 0; s < getNumSpecies(); ++s) {
-            doubleData[l++] = (*tracer)->getSpeciesDensity(s);
+            doubleData[l++] = tracers[t]->getSpeciesDensity(s);
         }
     }
     if (nc_put_var(ncId, rhoVarId, doubleData) != NC_NOERR) {
@@ -362,8 +361,8 @@ void TracerManager::output(const string &fileName,
     if (domain->getNumDim() == 2) {
         doubleData = new double[tracers.size()*4*domain->getNumDim()];
         l = 0;
-        for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
-            TracerSkeleton &s = (*tracer)->getSkeleton();
+        for (int t = 0; t < tracers.size(); ++t) {
+            TracerSkeleton &s = tracers[t]->getSkeleton();
             vector<SpaceCoord*> &xs = s.getSpaceCoords(timeIdx);
             for (int i = 0; i < xs.size(); ++i) {
                 for (int m = 0; m < domain->getNumDim(); ++m) {
@@ -381,12 +380,12 @@ void TracerManager::output(const string &fileName,
         SpaceCoord x(2);
         doubleData = new double[tracers.size()*numSkel2*domain->getNumDim()];
         l = 0;
-        for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+        for (int t = 0; t < tracers.size(); ++t) {
             for (int i = 0; i < numSkel2; ++i) {
                 double theta = i*dtheta;
                 y(0) = cos(theta);
                 y(1) = sin(theta);
-                (*tracer)->getSpaceCoord(*domain, timeIdx, y, x);
+                tracers[t]->getSpaceCoord(*domain, timeIdx, y, x);
                 for (int m = 0; m < domain->getNumDim(); ++m) {
                     doubleData[l++] = x(m);
                 }

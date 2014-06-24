@@ -5,18 +5,18 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 begin
 
     root = "../build/Release"
-    test_case = "deform.case4"
+    test_case = "deform"
     ic = "sc"
     resolution = "240x120"
     time_stamp = "%5.5d"
-    start_time = 300
-    end_time = 300
-    time_step = 300
+    start_time = 0
+    end_time = 600
+    time_step = 10
 
-    ; min_lon = 150.0
-    ; max_lon = 200.0
-    ; min_lat = 30.0
-    ; max_lat = 60.0
+    ; min_lon = 120.0
+    ; max_lon = 270.0
+    ; min_lat = 10.0
+    ; max_lat = 80.0
 
     file_prefix = "lasm."+test_case+"."+resolution
 
@@ -36,7 +36,18 @@ begin
         gsn_define_colormap(wks, "WhBlGrYeRe")
     end if
     if (isStrSubset(test_case, "barotropic")) then
-        gsn_define_colormap(wks, "GMT_panoply")
+        if (ic .eq. "gd") then
+            gsn_define_colormap(wks, "GMT_panoply")
+        end if
+        if (ic .eq. "step") then
+            cmap = (/(/1.0, 1.0, 1.0 /),(/0.0, 0.0, 0.0 /), \
+                     (/0.84,0.84,1.0 /),(/0.38,0.4, 0.98/), \
+                     (/0.04,0.15,0.89/),(/0.06,0.4, 0.46/), \
+                     (/0.15,0.71,0.14/),(/0.54,0.85,0.17/), \
+                     (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
+                     (/0.99,0.09,0.11/)/)
+            gsn_define_colormap(wks, cmap)
+        end if
     end if
     if (isStrSubset(test_case, "deform")) then
         if (ic .eq. "ch" .or. ic .eq. "sc") then
@@ -61,13 +72,15 @@ begin
     res@cnLevelSelectionMode = "ManualLevels"
     if (test_case .eq. "barotropic") then
         if (ic .eq. "step") then
-            res@cnMinLevelValF = 0.0
-            res@cnMaxLevelValF = 1.0
+            res@cnMinLevelValF = 0.2
+            res@cnMaxLevelValF = 0.9
             res@cnLevelSpacingF = 0.1
         else if (ic .eq. "gd") then
-            res@cnMinLevelValF = 62000
-            res@cnMaxLevelValF = 83000
-            res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/15.0
+            ; res@cnMinLevelValF = 102000.0
+            ; res@cnMaxLevelValF = 124000.0
+            res@cnMinLevelValF = 61000
+            res@cnMaxLevelValF = 86000
+            res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
         end if
         end if
     end if
@@ -113,7 +126,7 @@ begin
         num_lat = dimsizes(f->lat)
         if (isStrSubset(test_case, "barotropic")) then
             if (ic .eq. "step") then
-                q = f->q2
+                q = f->q2/f->q0
             end if
             if (ic .eq. "gd") then
                 q = f->q1
@@ -135,8 +148,9 @@ begin
         end if
         copy_VarCoords(f->q0, q)
         res@gsnLeftString = ""
-        res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
-                             "Max:"+sprintf("%8.5f", max(q))
+        res@gsnRightString = ""
+        ; res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
+        ;                      "Max:"+sprintf("%8.5f", max(q))
         plot = gsn_csm_contour_map(wks, q, res)
 
         frame(wks)

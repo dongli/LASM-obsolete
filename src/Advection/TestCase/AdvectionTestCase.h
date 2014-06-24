@@ -11,6 +11,8 @@ protected:
     Domain *domain;
     Mesh *mesh;
     const geomtk::TimeManager *timeManager;
+    geomtk::IOManager<geomtk::RLLDataFile> io;
+    int fileIdx;
     string subcase;
     VelocityField velocity;
     vector<ScalarField*> q;
