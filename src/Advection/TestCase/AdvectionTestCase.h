@@ -10,31 +10,38 @@ class AdvectionTestCase {
 protected:
     Domain *domain;
     Mesh *mesh;
-    const geomtk::TimeManager *timeManager;
-    geomtk::IOManager<geomtk::RLLDataFile> io;
-    int fileIdx;
+    TimeManager *timeManager;
+    IOManager io;
+    int outputFileIdx;
+    string restartFileName;
     string subcase;
     VelocityField velocity;
-    vector<ScalarField*> q;
+    vector<ScalarField*> *meshedDensities;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
 
     virtual void init(const ConfigManager &configManager,
-                      const TimeManager &timeManager);
+                      TimeManager &timeManager);
 
     virtual const Domain& getDomain() const { return *domain; }
     virtual const Mesh& getMesh() const { return *mesh; }
     virtual const VelocityField& getVelocityField() const { return velocity; }
-    
+
     /**
-     *  Output velocity field.
-     *
-     *  @param fileName   the output file name.
-     *  @param oldTimeIdx the old time level index.
+     *  Register default output fields including velocity field and meshed
+     *  tracer density fields.
      */
-    void outputVelocity(const string &fileName,
-                        const TimeLevelIndex<2> &oldTimeIdx) const;
+    void registerDefaultOutput();
+
+    /**
+     *  Output data.
+     *
+     *  @param timeIdx          the time level index.
+     *  @param advectionManager the advection manager.
+     */
+    virtual void output(const TimeLevelIndex<2> &timeIdx,
+                        AdvectionManager &advectionManager);
 
     /**
      *  Return the start time of the test case.
@@ -58,18 +65,11 @@ public:
     virtual double getStepSize() const = 0;
 
     /**
-     *  Select the subcase to run.
+     *  Calculate initial condition and set tracers.
      *
-     *  @param subcaseName the name of the subcase.
+     *  @param advectionManager the advection manager.
      */
-    virtual void selectSubcase(const string &subcaseName);
-
-    /**
-     *  Calculate initial condition and set tracers. This base function just
-     *  transfer the settings of derived ones to tracers, so it will be called
-     *  at the end of derived ones.
-     */
-    virtual void calcInitCond(AdvectionManager &advectionManager);
+    virtual void calcInitCond(AdvectionManager &advectionManager) = 0;
 
     /**
      *  Advance the test case one time step.
@@ -99,6 +99,11 @@ protected:
      */
     virtual void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
                               ScalarField &q);
+
+    void startOutput(const TimeLevelIndex<2> &timeIdx);
+    
+    void finishOutput(const TimeLevelIndex<2> &timeIdx,
+                      AdvectionManager &advectionManager);
 };
 
 }

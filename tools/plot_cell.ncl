@@ -76,10 +76,10 @@ begin
             res@cnMaxLevelValF = 0.9
             res@cnLevelSpacingF = 0.1
         else if (ic .eq. "gd") then
-            ; res@cnMinLevelValF = 102000.0
-            ; res@cnMaxLevelValF = 124000.0
-            res@cnMinLevelValF = 61000
-            res@cnMaxLevelValF = 86000
+            res@cnMinLevelValF = 102000.0
+            res@cnMaxLevelValF = 124000.0
+            ; res@cnMinLevelValF = 61000
+            ; res@cnMaxLevelValF = 86000
             res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
         end if
         end if
@@ -151,7 +151,7 @@ begin
         res@gsnRightString = ""
         ; res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
         ;                      "Max:"+sprintf("%8.5f", max(q))
-        plot = gsn_csm_contour_map(wks, q, res)
+        plot = gsn_csm_contour_map(wks, q(0,:,:), res)
 
         frame(wks)
     end do

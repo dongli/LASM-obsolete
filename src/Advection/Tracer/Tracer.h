@@ -3,6 +3,7 @@
 
 #include "lasm_commons.h"
 #include "Parcel.h"
+#include "MeshAdaptor.h"
 
 namespace lasm {
 
@@ -25,16 +26,15 @@ protected:
     vec mass;           //>! species mass array
     TracerSkeleton *skeleton;
     TracerType type;
+    BodyCoord *vy;  //>! long axis vertex body coordinate
+    SpaceCoord *vx; //>! long axis vertex space coordinate
     /**
      *  Remapping parameters
      */
     int numConnectedCell;
-    vector<TracerMeshCell*> connectedCells;
+    vector<int> connectedCellIdxs;
 
-    BodyCoord *vy;  //>! long axis vertex body coordinate
-    SpaceCoord *vx; //>! long axis vertex space coordinate
-
-    TracerMeshCell *hostCell;
+    int hostCellIdx;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -55,29 +55,13 @@ public:
      *  @param timeIdx the time level index.
      *  @param s       the species index.
      */
-    void calcSpeciesDensity(const TimeLevelIndex<2> &timeIdx, int s) {
+    void calcDensity(const TimeLevelIndex<2> &timeIdx, int s) {
         density[s] = mass[s]/detH.getLevel(timeIdx);
     }
 
-    double& getSpeciesDensity(int speciesIdx) {
-#ifndef NDEBUG
-        if (speciesIdx >= density.size()) {
-            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
-                         density.size()-1 << "]!");
-        }
-#endif
-        return density[speciesIdx];
-    }
+    double& getDensity(int s) { return density[s]; }
 
-    double getSpeciesDensity(int speciesIdx) const {
-#ifndef NDEBUG
-        if (speciesIdx >= density.size()) {
-            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
-                         density.size()-1 << "]!");
-        }
-#endif
-        return density[speciesIdx];
-    }
+    double getDensity(int s) const { return density[s]; }
 
     /**
      *  Calculate species mass from density.
@@ -85,20 +69,17 @@ public:
      *  @param timeIdx the time level index.
      *  @param s       the species index.
      */
-    void calcSpeciesMass(const TimeLevelIndex<2> &timeIdx, int s) {
+    void calcMass(const TimeLevelIndex<2> &timeIdx, int s) {
         mass[s] = density[s]*detH.getLevel(timeIdx);
     }
 
-    double& getSpeciesMass(int speciesIdx) {
-        return mass[speciesIdx];
-    }
+    double& getMass(int s) { return mass[s]; }
 
-    double getSpeciesMass(int speciesIdx) const {
-        return mass[speciesIdx];
-    }
+    double getMass(int s) const { return mass[s]; }
 
     void resetSpecies() {
         density.zeros();
+        mass.zeros();
     }
 
     Tracer& operator=(const Tracer &other);
@@ -137,16 +118,16 @@ public:
     /**
      *  Connect the tracer with the given mesh cell.
      *
-     *  @param cell   the mesh cell to be connected.
+     *  @param i the cell index.
      */
-    void connect(TracerMeshCell *cell);
+    void connectCell(int i);
 
     /**
      *  Get the connected mesh cells.
      *
-     *  @return The connected mesh cell list.
+     *  @return The connected mesh cell index list.
      */
-    vector<TracerMeshCell*>& getConnectedCells() { return connectedCells; }
+    const vector<int>& getConnectedCells() const { return connectedCellIdxs; }
 
     /**
      *  Get the number of connected cells. It should be used instead of the size
@@ -159,16 +140,16 @@ public:
     /**
      *  Set the host cell where the tracer is.
      *
-     *  @param cell the host cell.
+     *  @param cell the host cell index.
      */
-    void setHostCell(TracerMeshCell *cell) { hostCell = cell; }
+    void setHostCell(int i) { hostCellIdx = i; }
 
     /**
      *  Get the host cell where the tracer is.
      *
      *  @return The host cell.
      */
-    TracerMeshCell* getHostCell() const { return hostCell; }
+    int getHostCell() const { return hostCellIdx; }
 
     /**
      *  Update deformation matrix from tracer skeleton.
@@ -198,22 +179,25 @@ public:
      *  Dump the centroid, shape, neighbor cells and neighbor tracers into file
      *  using by external NCL script.
      *
-     *  @param timeIdx the time level index.
-     *  @param domain  the spatial domain.
-     *  @param file    the text file in class std::ofstream.
-     *  @param idx     the index to distinguish tracer in the file.
+     *  @param timeIdx     the time level index.
+     *  @param domain      the spatial domain.
+     *  @param meshAdaptor the mesh adaptor.
+     *  @param file        the text file in class std::ofstream.
+     *  @param idx         the index to distinguish tracer in the file.
      */
     void dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
-              std::ofstream &file, int idx);
+              const MeshAdaptor &meshAdaptor, ofstream &file, int idx);
 
     /**
      *  Dump the centroid, shape, neighbor cells and neighbor tracers into file
      *  using by external NCL script.
      *
-     *  @param timeIdx the time level index.
-     *  @param domain  the spatial domain.
+     *  @param timeIdx     the time level index.
+     *  @param domain      the spatial domain.
+     *  @param meshAdaptor the mesh adaptor.
      */
-    void dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain);
+    void dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
+              const MeshAdaptor &meshAdaptor);
 };
 
 }

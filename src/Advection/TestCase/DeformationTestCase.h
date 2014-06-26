@@ -13,14 +13,15 @@ public:
     ~DeformationTestCase();
 
     virtual void init(const ConfigManager &configManager,
-                      const TimeManager &timeManager);
+                      TimeManager &timeManager);
 
     Time getStartTime() const;
     Time getEndTime() const;
     double getStepSize() const;
 
-    void calcInitCond(AdvectionManager &advectionManager);
-    void advance(double time, const TimeLevelIndex<2> &timeIdx);
+    virtual void calcInitCond(AdvectionManager &advectionManager);
+
+    virtual void advance(double time, const TimeLevelIndex<2> &timeIdx);
 };
 
 }

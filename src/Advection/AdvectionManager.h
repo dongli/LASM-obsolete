@@ -2,7 +2,7 @@
 #define __LASM_AdvectionManager__
 
 #include "TracerManager.h"
-#include "TracerMeshCell.h"
+#include "MeshAdaptor.h"
 
 namespace lasm {
 
@@ -15,31 +15,34 @@ protected:
     const Mesh *mesh;
     const TimeManager *timeManager;
     TracerManager tracerManager;
-    Field<TracerMeshCell> tracerMeshCells;
+    MeshAdaptor meshAdaptor;
     Regrid *regrid;
-    // -------------------------------------------------------------------------
-    // key parameters
-    double filamentLimit;   //>! control the tracer filament degree
-    double radialMixing;    //>! control the radial mixing degree
-    double lateralMixing;   //>! control the lateral mixing degree
-    double shrinkFactor;    //>! control the mixed parcel shrinking degree
-    bool isMassFixed;       //>! control whether use mass fixer
-    // -------------------------------------------------------------------------
-    StampString *outputFileFormat;
+    /**
+     *  Interparcel mixing control parameters
+     */
+    double filamentLimit;       //>! control the tracer filament degree
+    double strictFilamentLimit; //>! strict value of filamentLimit
+    double radialMixing;        //>! control the radial mixing degree
+    double lateralMixing;       //>! control the lateral mixing degree
+    double strictLateralMixing; //>! strict value of lateralMixing
+    double shrinkFactor;        //>! control the mixed parcel shrinking degree
+    double disorderDegreeLimit;
+    bool isMassFixed;           //>! control whether use mass fixer
+    string restartFileName;
     TimeLevels<vector<double>, 2> totalMass;
-    // -------------------------------------------------------------------------
-    // range search parameters
+    /**
+     *  Neighbor cell searching variables
+     */
     Tree *cellTree;                 //>! tree data structure for mesh cells for
                                     //>! avoiding rebuild of tree each time
     mat cellCoords;                 //>! collection of cell space coordinates
     vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
                                     //>! will modify the order of cells
-    // -------------------------------------------------------------------------
     // some array recording objects need to be processed
     int numMixedTracer;
     vector<Tracer*> mixedTracers;
     int numVoidCell;
-    vector<TracerMeshCell*> voidCells;
+    vector<int> voidCells;
 public:
     AdvectionManager();
     ~AdvectionManager();
@@ -50,11 +53,20 @@ public:
      *  @param domain        the spatial domain.
      *  @param mesh          the mesh.
      *  @param configManager the configuration manager.
+     *  @param timeManager   the time manager.
      */
     void init(const Domain &domain, const Mesh &mesh,
               const ConfigManager &configManager,
               const TimeManager &timeManager);
 
+    /**
+     *  Return the meshed tracer density array.
+     *
+     *  @return The meshed tracer density array.
+     */
+    vector<ScalarField*>& getMeshedDensities() {
+        return meshAdaptor.getDensities();
+    }
 
     /**
      *  Register a tracer species.
@@ -72,14 +84,17 @@ public:
      *  @param timeIdx the time level index.
      *  @param q       the input scalar field.
      */
-    void input(const TimeLevelIndex<2> &timeIdx, vector<ScalarField*> &q);
+    void input(const TimeLevelIndex<2> &timeIdx, double *q);
+
+    void restart(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Output tracers on old time level into netCDF file.
      *
      *  @param timeIdx the time level index.
+     *  @param ncId    the netCDF output file ID.
      */
-    void output(const TimeLevelIndex<2> &timeIdx);
+    void output(const TimeLevelIndex<2> &timeIdx, int ncId);
 
     /**
      *  Diagnose total tracer mass.
@@ -97,7 +112,7 @@ public:
      */
     void advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                  const VelocityField &V);
-private:
+
     /**
      *  Calculate the total mass of every tracer species, and store the results
      *  into tracerMeshCells.

@@ -171,11 +171,9 @@ const TracerSpeciesInfo& TracerManager::getSpeciesInfo(int speciesIdx) const {
     return *speciesInfos[speciesIdx];
 }
 
-void TracerManager::output(const string &fileName,
-                           const TimeLevelIndex<2> &timeIdx) {
-    int ncId;
+void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
     int numTracerDimId, numSkel1DimId, numDimDimId, numSpeciesDimId;
-    int idVarId;
+    int idVarId, volVarId;
     int cDimIds[2], cVarId;
     int hDimIds[3], hVarId;
     int rhoDimIds[2], rhoVarId;
@@ -188,39 +186,21 @@ void TracerManager::output(const string &fileName,
     int l;
     int *intData;
     double *doubleData;
-    list<Tracer*>::iterator tracer;
 
-    if (nc_create(fileName.c_str(), NC_CLOBBER, &ncId) != NC_NOERR) {
-        REPORT_ERROR("Failed to create \"" << fileName << "\"!");
-    }
+    nc_redef(ncId);
 
-    if (nc_def_dim(ncId, "num_tracer", tracers.size(), &numTracerDimId)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to define dimension \"num_tracer\"!");
-    }
+    nc_def_dim(ncId, "num_tracer", tracers.size(), &numTracerDimId);
+    nc_def_dim(ncId, "num_dim", domain->getNumDim(), &numDimDimId);
+    nc_def_dim(ncId, "num_species", getNumSpecies(), &numSpeciesDimId);
 
     if (domain->getNumDim() == 2) {
         // only output skeleton in 2D domain, since in 3D it could be messy.
-        if (nc_def_dim(ncId, "num_skel1", 4, &numSkel1DimId)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to define dimension \"num_skel1\"!");
-        }
+        nc_def_dim(ncId, "num_skel1", 4, &numSkel1DimId);
 #ifdef OUTPUT_TRACER_SHAPE
-        if (nc_def_dim(ncId, "num_skel2", numSkel2, &numSkel2DimId)
-             != NC_NOERR) {
-            REPORT_ERROR("Failed to define dimension \"num_skel2\"!");
-        }
+        nc_def_dim(ncId, "num_skel2", numSkel2, &numSkel2DimId);
 #endif
-    }
-
-    if (nc_def_dim(ncId, "num_dim", domain->getNumDim(), &numDimDimId)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to define dimension \"num_dim\"!");
-    }
-    
-    if (nc_def_dim(ncId, "num_species", getNumSpecies(), &numSpeciesDimId)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to define dimension \"num_species\"!");
+    } else {
+        REPORT_ERROR("Under construction!");
     }
 
     time_t curr_time;
@@ -231,94 +211,68 @@ void TracerManager::output(const string &fileName,
             timeinfo->tm_year+1900,
             timeinfo->tm_mon+1,
             timeinfo->tm_mday);
-    if (nc_put_att(ncId, NC_GLOBAL, "create_date", NC_CHAR, strlen(str), str)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-    }
-
-    if (nc_put_att(ncId, NC_GLOBAL, "scale0", NC_DOUBLE, 1, &scale0)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put global dimension \"scale0\"!");
-    }
+    nc_put_att(ncId, NC_GLOBAL, "create_date", NC_CHAR, strlen(str), str);
+    nc_put_att(ncId, NC_GLOBAL, "scale0", NC_DOUBLE, 1, &scale0);
     
-    if (nc_def_var(ncId, "id", NC_INT, 1, &numTracerDimId, &idVarId) != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"id\"!");
-    }
+    nc_def_var(ncId, "id", NC_INT, 1, &numTracerDimId, &idVarId);
+    sprintf(str, "tracer identifier");
+    nc_put_att(ncId, idVarId, "long_name", NC_CHAR, strlen(str), str);
+
+    nc_def_var(ncId, "vp", NC_DOUBLE, 1, &numTracerDimId, &volVarId);
+    sprintf(str, "parcel volumes");
+    nc_put_att(ncId, volVarId, "long_name", NC_CHAR, strlen(str), str);
 
     cDimIds[0] = numTracerDimId;
     cDimIds[1] = numDimDimId;
-    if (nc_def_var(ncId, "c", NC_DOUBLE, 2, cDimIds, &cVarId) != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"c\"!");
-    }
+    nc_def_var(ncId, "c", NC_DOUBLE, 2, cDimIds, &cVarId);
     sprintf(str, "tracer centroid coordinates on %s", domain->getBrief().c_str());
-    if (nc_put_att(ncId, cVarId, "long_name", NC_CHAR, strlen(str), str)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-    }
+    nc_put_att(ncId, cVarId, "long_name", NC_CHAR, strlen(str), str);
 
     hDimIds[0] = numTracerDimId;
     hDimIds[1] = numDimDimId;
     hDimIds[2] = numDimDimId;
-    if (nc_def_var(ncId, "h", NC_DOUBLE, 3, hDimIds, &hVarId) != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"h\"!");
-    }
+    nc_def_var(ncId, "h", NC_DOUBLE, 3, hDimIds, &hVarId);
     sprintf(str, "tracer deformation matrix");
-    if (nc_put_att(ncId, hVarId, "long_name", NC_CHAR, strlen(str), str)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-    }
+    nc_put_att(ncId, hVarId, "long_name", NC_CHAR, strlen(str), str);
     
     rhoDimIds[0] = numTracerDimId;
     rhoDimIds[1] = numSpeciesDimId;
-    if (nc_def_var(ncId, "rho", NC_DOUBLE, 2, rhoDimIds, &rhoVarId) != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"rho\"!");
-    }
+    nc_def_var(ncId, "rho", NC_DOUBLE, 2, rhoDimIds, &rhoVarId);
     sprintf(str, "tracer species denisty");
-    if (nc_put_att(ncId, rhoVarId, "long_name", NC_CHAR, strlen(str), str)
-        != NC_NOERR) {
-        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-    }
+    nc_put_att(ncId, rhoVarId, "long_name", NC_CHAR, strlen(str), str);
 
     if (domain->getNumDim() == 2) {
         sDimIds[0] = numTracerDimId;
         sDimIds[1] = numSkel1DimId;
         sDimIds[2] = numDimDimId;
-        if (nc_def_var(ncId, "s1", NC_DOUBLE, 3, sDimIds, &s1VarId)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to define variable \"s1\"!");
-        }
+        nc_def_var(ncId, "s1", NC_DOUBLE, 3, sDimIds, &s1VarId);
         sprintf(str, "tracer actual skeleton");
-        if (nc_put_att(ncId, s1VarId, "long_name", NC_CHAR, strlen(str), str)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-        }
+        nc_put_att(ncId, s1VarId, "long_name", NC_CHAR, strlen(str), str);
 #ifdef OUTPUT_TRACER_SHAPE
         sDimIds[1] = numSkel2DimId;
-        if (nc_def_var(ncId, "s2", NC_DOUBLE, 3, sDimIds, &s2VarId)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to define variable \"s2\"!");
-        }
+        nc_def_var(ncId, "s2", NC_DOUBLE, 3, sDimIds, &s2VarId);
         sprintf(str, "tracer fitted skeleton");
-        if (nc_put_att(ncId, s2VarId, "long_name", NC_CHAR, strlen(str), str)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
-        }
+        nc_put_att(ncId, s2VarId, "long_name", NC_CHAR, strlen(str), str);
 #endif
     }
     
-    if (nc_enddef(ncId) != NC_NOERR) {
+    nc_enddef(ncId);
 
-    }
-    // -------------------------------------------------------------------------
     intData = new int[tracers.size()];
     l = 0;
     for (int t = 0; t < tracers.size(); ++t) {
         intData[l++] = tracers[t]->getID();
     }
-    if (nc_put_var(ncId, idVarId, intData) != NC_NOERR) {
-        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-    }
+    nc_put_var(ncId, idVarId, intData);
     delete [] intData;
+
+    doubleData = new double[tracers.size()];
+    l = 0;
+    for (int t = 0; t < tracers.size(); ++t) {
+        doubleData[l++] = tracers[t]->getDetH(timeIdx);
+    }
+    nc_put_var(ncId, volVarId, doubleData);
+    delete [] doubleData;
     
     doubleData = new double[tracers.size()*domain->getNumDim()];
     l = 0;
@@ -327,9 +281,7 @@ void TracerManager::output(const string &fileName,
             doubleData[l++] = tracers[t]->getX(timeIdx)(m);
         }
     }
-    if (nc_put_var(ncId, cVarId, doubleData) != NC_NOERR) {
-        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-    }
+    nc_put_var(ncId, cVarId, doubleData);
     delete [] doubleData;
 
     doubleData = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
@@ -341,21 +293,17 @@ void TracerManager::output(const string &fileName,
             }
         }
     }
-    if (nc_put_var(ncId, hVarId, doubleData) != NC_NOERR) {
-        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-    }
+    nc_put_var(ncId, hVarId, doubleData);
     delete [] doubleData;
     
     doubleData = new double[tracers.size()*getNumSpecies()];
     l = 0;
     for (int t = 0; t < tracers.size(); ++t) {
         for (int s = 0; s < getNumSpecies(); ++s) {
-            doubleData[l++] = tracers[t]->getSpeciesDensity(s);
+            doubleData[l++] = tracers[t]->getDensity(s);
         }
     }
-    if (nc_put_var(ncId, rhoVarId, doubleData) != NC_NOERR) {
-        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-    }
+    nc_put_var(ncId, rhoVarId, doubleData);
     delete [] doubleData;
 
     if (domain->getNumDim() == 2) {
@@ -370,9 +318,7 @@ void TracerManager::output(const string &fileName,
                 }
             }
         }
-        if (nc_put_var(ncId, s1VarId, doubleData) != NC_NOERR) {
-            REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-        }
+        nc_put_var(ncId, s1VarId, doubleData);
         delete [] doubleData;
 #ifdef OUTPUT_TRACER_SHAPE
         double dtheta = PI2/numSkel2;
@@ -391,17 +337,10 @@ void TracerManager::output(const string &fileName,
                 }
             }
         }
-        if (nc_put_var(ncId, s2VarId, doubleData) != NC_NOERR) {
-            REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
-        }
+        nc_put_var(ncId, s2VarId, doubleData);
         delete [] doubleData;
 #endif
     }
-    // -------------------------------------------------------------------------
-    if (nc_close(ncId) != NC_NOERR) {
-        REPORT_ERROR("Failed to close file \"" << fileName << "\"!");
-    }
-    REPORT_NOTICE("File \"" << fileName << "\" is outputted.");
 }
 
 }

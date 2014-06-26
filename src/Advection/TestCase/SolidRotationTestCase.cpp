@@ -16,13 +16,11 @@ SolidRotationTestCase::~SolidRotationTestCase() {
 }
 
 void SolidRotationTestCase::init(const ConfigManager &configManager,
-                                 const TimeManager &timeManager) {
+                                 TimeManager &timeManager) {
     AdvectionTestCase::init(configManager, timeManager);
-    // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
     domain->setRadius(1.0);
-    // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
     int numLon = 240, numLat = 121;
@@ -33,16 +31,12 @@ void SolidRotationTestCase::init(const ConfigManager &configManager,
         configManager.getValue("test_case", "num_lat", numLat);
     }
     mesh->init(numLon, numLat);
-    // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
-    // -------------------------------------------------------------------------
     // set parameters
-    // =========================================================================
     angleSpeed = PI2/12/86400;
     U0 = domain->getRadius()*angleSpeed;
     alpha = M_PI_2;
-    // =========================================================================
     axisPole = new SpaceCoord(2);
     c0 = new SpaceCoord(2);
     cr0 = new SpaceCoord(2);
@@ -92,24 +86,26 @@ void SolidRotationTestCase::advance(double time,
 }
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-    TimeLevelIndex<2> initTimeIdx;
-    q.push_back(new ScalarField);
-    q.front()->create("", "", "", *mesh, CENTER);
+    TimeLevelIndex<2> timeIdx;
+    advectionManager.registerTracer("q0", "N/A", "background tracer");
+    advectionManager.registerTracer("q1", "N/A", "cosine hill tracer");
+    meshedDensities = &advectionManager.getMeshedDensities();
+    AdvectionTestCase::registerDefaultOutput();
+    double q[2*mesh->getTotalNumGrid(CENTER)];
+    int l = 0;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-        (*q.front())(initTimeIdx, i) = 1.0;
-        (*q.front())(initTimeIdx+1, i) = 1.0;
+        q[l++] = 1.0;
     }
-    q.push_back(new ScalarField);
-    q.back()->create("", "", "", *mesh, CENTER);
-    calcSolution(0, initTimeIdx, *q.back());
-    AdvectionTestCase::calcInitCond(advectionManager);
+    calcSolution(0, timeIdx, *(*meshedDensities)[1]);
+    // propagate initial conditions to advection manager
+    advectionManager.input(timeIdx, q);
 }
 
 void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          AdvectionManager &advectionManager) {
-    calcSolution(dt, timeIdx, *q.back());
-    advectionManager.input(timeIdx, q);
+    calcSolution(dt, timeIdx, *(*meshedDensities)[1]);
+    advectionManager.remapMeshToTracers(timeIdx);
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }
 

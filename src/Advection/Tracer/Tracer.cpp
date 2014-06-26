@@ -1,6 +1,5 @@
 #include "Tracer.h"
 #include "TracerSkeleton.h"
-#include "TracerMeshCell.h"
 
 namespace lasm {
 
@@ -34,11 +33,11 @@ void Tracer::resetConnectedCells() {
     numConnectedCell = 0;
 }
 
-void Tracer::connect(TracerMeshCell *cell) {
-    if (numConnectedCell == connectedCells.size()) {
-        connectedCells.push_back(cell);
+void Tracer::connectCell(int i) {
+    if (numConnectedCell == connectedCellIdxs.size()) {
+        connectedCellIdxs.push_back(i);
     } else {
-        connectedCells[numConnectedCell] = cell;
+        connectedCellIdxs[numConnectedCell] = i;
     }
     numConnectedCell++;
 }
@@ -121,12 +120,23 @@ void Tracer::resetSkeleton(const Domain &domain, const Mesh &mesh,
 }
 
 void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
-                  std::ofstream &file, int idx) {
-    // -------------------------------------------------------------------------
+                  const MeshAdaptor &meshAdaptor, ofstream &file, int idx) {
     // tracer centroid
-    file << "centroid" << idx << " = (/" << getX(timeIdx)(0)/RAD << "," <<
-        getX(timeIdx)(1)/RAD << "/)" << endl;
-    // -------------------------------------------------------------------------
+    file << "centroid" << idx << " = (/" << getX(timeIdx)(0)/RAD << ",";
+    file << getX(timeIdx)(1)/RAD << "/)" << endl;
+    // tracer skeleton points
+    file << "skel_points" << idx << " = new((/4,2/), double)" << endl;
+    for (int m = 0; m < 2; ++m) {
+        file << "skel_points" << idx << "(:," << m << ") = (/";
+        for (int i = 0; i < skeleton->getSpaceCoords(timeIdx).size(); ++i) {
+            file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD;
+            if (i != 3) {
+                file << ",";
+            } else {
+                file << "/)" << endl;
+            }
+        }
+    }
     // tracer shape
     int n = 100;
     file << "shape" << idx << " = new((/" << n << ",2/), double)" << endl;
@@ -151,7 +161,6 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
             }
         }
     }
-    // -------------------------------------------------------------------------
     // connected cells
     if (numConnectedCell != 0) {
         file << "ngb_cells" << idx << " = new((/" << numConnectedCell
@@ -159,35 +168,34 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         for (int m = 0; m < 2; ++m) {
             file << "ngb_cells" << idx << "(:," << m << ") = (/";
             for (int i = 0; i < numConnectedCell; ++i) {
-                TracerMeshCell *cell = connectedCells[i];
+                file << meshAdaptor.getCoord(connectedCellIdxs[i])(m)/RAD;
                 if (i != numConnectedCell-1) {
-                    file << cell->getCoord()(m)/RAD << ",";
+                    file << ",";
                 } else {
-                    file << cell->getCoord()(m)/RAD << "/)" << endl;
+                    file << "/)" << endl;
                 }
             }
         }
     }
-    // -------------------------------------------------------------------------
     // neighbor tracer locations
     int numNeighborTracer = 0;
     for (int i = 0; i < numConnectedCell; ++i) {
-        numNeighborTracer += connectedCells[i]->getNumContainedTracer();
+        int j = connectedCellIdxs[i];
+        numNeighborTracer += meshAdaptor.getNumContainedTracer(j);
     }
     if (numNeighborTracer != 0) {
-        file << "ngb_tracers" << idx << " = new((/" << numNeighborTracer <<
-            ",2/), double)" << endl;
+        file << "ngb_tracers" << idx << " = new((/" << numNeighborTracer << ",2/), double)" << endl;
         for (int m = 0; m < 2; ++m) {
             file << "ngb_tracers" << idx << "(:," << m << ") = (/";
             int k = 0;
             for (int i = 0; i < numConnectedCell; ++i) {
-                TracerMeshCell *cell = connectedCells[i];
-                vector<Tracer*> &tracers = cell->getContainedTracers();
-                for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
+                const vector<Tracer*> &tracers = meshAdaptor.getContainedTracers(connectedCellIdxs[i]);
+                for (int j = 0; j < meshAdaptor.getNumContainedTracer(connectedCellIdxs[i]); ++j) {
+                    file << tracers[j]->getX(timeIdx)(m)/RAD;
                     if (k != numNeighborTracer-1) {
-                        file << tracers[j]->getX(timeIdx)(m)/RAD << ",";
+                        file << ",";
                     } else {
-                        file << tracers[j]->getX(timeIdx)(m)/RAD << "/)" << endl;
+                        file << "/)" << endl;
                     }
                     k++;
                 }
@@ -196,66 +204,25 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
     }
 }
 
-void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
+void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
+                  const MeshAdaptor &meshAdaptor) {
     std::ofstream file; file.open("tracer_dump.txt");
-    // -------------------------------------------------------------------------
-    // centroid location
-    file << "centroid = (/" << getX(timeIdx)(0)/RAD << "," << getX(timeIdx)(1)/RAD << "/)" << endl;
-    // -------------------------------------------------------------------------
-    // skeleton points
+    // tracer centroid
+    file << "centroid = (/" << getX(timeIdx)(0)/RAD << ",";
+    file << getX(timeIdx)(1)/RAD << "/)" << endl;
+    // tracer skeleton points
     file << "skel_points = new((/4,2/), double)" << endl;
     for (int m = 0; m < 2; ++m) {
         file << "skel_points(:," << m << ") = (/";
         for (int i = 0; i < skeleton->getSpaceCoords(timeIdx).size(); ++i) {
+            file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD;
             if (i != 3) {
-                file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD << ",";
+                file << ",";
             } else {
-                file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD << "/)" << endl;
+                file << "/)" << endl;
             }
         }
     }
-    // -------------------------------------------------------------------------
-    // neighbor cell locations
-    if (numConnectedCell != 0) {
-        file << "ngb_cells = new((/" << numConnectedCell << ",2/), double)" << endl;
-        for (int m = 0; m < 2; ++m) {
-            file << "ngb_cells(:," << m << ") = (/";
-            for (int i = 0; i < numConnectedCell; ++i) {
-                TracerMeshCell *cell = connectedCells[i];
-                if (i != numConnectedCell-1) {
-                    file << cell->getCoord()(m)/RAD << ",";
-                } else {
-                    file << cell->getCoord()(m)/RAD << "/)" << endl;
-                }
-            }
-        }
-    }
-    // -------------------------------------------------------------------------
-    // neighbor tracer locations
-    int numNeighborTracer = 0;
-    for (int i = 0; i < numConnectedCell; ++i) {
-        numNeighborTracer += connectedCells[i]->getNumContainedTracer();
-    }
-    if (numNeighborTracer != 0) {
-        file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
-        for (int m = 0; m < 2; ++m) {
-            file << "ngb_tracers(:," << m << ") = (/";
-            int k = 0;
-            for (int i = 0; i < numConnectedCell; ++i) {
-                TracerMeshCell *cell = connectedCells[i];
-                vector<Tracer*> &tracers = cell->getContainedTracers();
-                for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
-                    if (k != numNeighborTracer-1) {
-                        file << tracers[j]->getX(timeIdx)(m)/RAD << ",";
-                    } else {
-                        file << tracers[j]->getX(timeIdx)(m)/RAD << "/)" << endl;
-                    }
-                    k++;
-                }
-            }
-        }
-    }
-    // -------------------------------------------------------------------------
     // tracer shape
     int n = 100;
     file << "shape = new((/" << n << ",2/), double)" << endl;
@@ -277,6 +244,47 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain) {
                 file << shape[i][m]/RAD << ",";
             } else {
                 file << shape[i][m]/RAD << "/)" << endl;
+            }
+        }
+    }
+    // neighbor cell locations
+    if (numConnectedCell != 0) {
+        file << "ngb_cells = new((/" << numConnectedCell << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_cells(:," << m << ") = (/";
+            for (int i = 0; i < numConnectedCell; ++i) {
+                int j = connectedCellIdxs[i];
+                file << meshAdaptor.getCoord(j)(m)/RAD;
+                if (i != numConnectedCell-1) {
+                    file << ",";
+                } else {
+                    file << "/)" << endl;
+                }
+            }
+        }
+    }
+    // neighbor tracer locations
+    int numNeighborTracer = 0;
+    for (int i = 0; i < numConnectedCell; ++i) {
+        int j = connectedCellIdxs[i];
+        numNeighborTracer += meshAdaptor.getNumContainedTracer(j);
+    }
+    if (numNeighborTracer != 0) {
+        file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_tracers(:," << m << ") = (/";
+            int k = 0;
+            for (int i = 0; i < numConnectedCell; ++i) {
+                const vector<Tracer*> &tracers = meshAdaptor.getContainedTracers(connectedCellIdxs[i]);
+                for (int j = 0; j < meshAdaptor.getNumContainedTracer(connectedCellIdxs[i]); ++j) {
+                    file << tracers[j]->getX(timeIdx)(m)/RAD;
+                    if (k != numNeighborTracer-1) {
+                        file << ",";
+                    } else {
+                        file << "/)" << endl;
+                    }
+                    k++;
+                }
             }
         }
     }

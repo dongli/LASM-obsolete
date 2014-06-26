@@ -24,10 +24,6 @@ int main(int argc, const char *argv[])
         }
     } else if (testCaseName == "deform") {
         testCase = new lasm::DeformationTestCase();
-        if (configManager.hasKey("test_case", "subcase")) {
-            configManager.getValue("test_case", "subcase", subcaseName);
-            testCase->selectSubcase(subcaseName);
-        }
     } else if (testCaseName == "barotropic") {
         testCase = new lasm::BarotropicTestCase();
     } else {
@@ -41,8 +37,8 @@ int main(int argc, const char *argv[])
                           configManager, timeManager);
     
     testCase->calcInitCond(advectionManager);
-    advectionManager.output(oldTimeIdx);
     testCase->advance(timeManager.getSeconds(), oldTimeIdx);
+    testCase->output(oldTimeIdx, advectionManager);
     // integration loop
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
@@ -56,9 +52,7 @@ int main(int argc, const char *argv[])
         }
         timeManager.advance();
         oldTimeIdx.shift();
-        if (fmod(timeManager.getNumStep(), 10) == 0) {
-            advectionManager.output(oldTimeIdx);
-        }
+        testCase->output(oldTimeIdx, advectionManager);
     }
     delete testCase;
     return 0;

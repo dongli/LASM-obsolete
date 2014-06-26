@@ -21,6 +21,7 @@ using std::string;
 using std::vector;
 using std::list;
 using std::find;
+using std::ofstream;
 
 using arma::vec;
 using arma::mat;
@@ -36,6 +37,7 @@ using geomtk::TimeLevels;
 using geomtk::TimeLevelIndex;
 using geomtk::SystemTools;
 using geomtk::TimeUnit;
+using geomtk::IOFrequencyUnit;
 
 const int FULL = geomtk::RLLStagger::GridType::FULL;
 const int HALF = geomtk::RLLStagger::GridType::HALF;
@@ -62,6 +64,7 @@ typedef geomtk::NumericRLLField<double, 1> SingleScalarField;
 typedef geomtk::RLLVelocityField VelocityField;
 typedef geomtk::RLLRegrid Regrid;
 typedef geomtk::TimeManager TimeManager;
+typedef geomtk::IOManager<geomtk::RLLDataFile> IOManager;
 typedef geomtk::ConfigManager ConfigManager;
 typedef geomtk::StampString StampString;
 

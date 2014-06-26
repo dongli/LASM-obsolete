@@ -15,7 +15,7 @@ public:
     virtual ~BarotropicTestCase();
 
     virtual void init(const ConfigManager &configManager,
-                      const TimeManager &timeManager);
+                      TimeManager &timeManager);
 
     Time getStartTime() const;
     Time getEndTime() const;
@@ -24,8 +24,12 @@ public:
     virtual const Domain& getDomain() const { return model.getDomain(); }
     virtual const Mesh& getMesh() const { return model.getMesh(); }
     
-    void calcInitCond(AdvectionManager &advectionManager);
-    void advance(double time, const TimeLevelIndex<2> &timeIdx);
+    virtual void calcInitCond(AdvectionManager &advectionManager);
+    
+    virtual void output(const TimeLevelIndex<2> &timeIdx,
+                        AdvectionManager &advectionManager);
+    
+    virtual void advance(double time, const TimeLevelIndex<2> &timeIdx);
 };
 
 }
