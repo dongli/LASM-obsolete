@@ -2,7 +2,6 @@
 
 int main(int argc, const char *argv[])
 {
-    // check arguments
     if (argc != 2) {
         REPORT_ERROR("Wrong usage! A configuration file path is needed.");
     }

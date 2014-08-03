@@ -64,9 +64,7 @@ public:
      *
      *  @return The meshed tracer density array.
      */
-    vector<ScalarField*>& getMeshedDensities() {
-        return meshAdaptor.getDensities();
-    }
+    vector<ScalarField*>& getDensities() { return meshAdaptor.getDensities(); }
 
     /**
      *  Register a tracer species.

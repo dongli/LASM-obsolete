@@ -5,7 +5,7 @@ namespace lasm {
 AdvectionTestCase::AdvectionTestCase() {
     domain = NULL;
     mesh = NULL;
-    meshedDensities = NULL;
+    densities = NULL;
     restartFileName = "N/A";
 }
 
@@ -48,9 +48,9 @@ void AdvectionTestCase::registerDefaultOutput() {
     io.file(outputFileIdx).registerOutputField<double, 2, FULL_DIMENSION>
         (4, &velocity(0), &velocity(1), &velocity.getDivergence(),
          &velocity.getVorticity()[0]);
-    for (int s = 0; s < meshedDensities->size(); ++s) {
+    for (int s = 0; s < densities->size(); ++s) {
         io.file(outputFileIdx).registerOutputField<double, 2, FULL_DIMENSION>
-            (1, (*meshedDensities)[s]);
+            (1, (*densities)[s]);
     }
 }
 
@@ -58,8 +58,8 @@ void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
     io.output<double, 2>(outputFileIdx, timeIdx, 4, &velocity(0), &velocity(1),
                          &velocity.getDivergence(), &velocity.getVorticity()[0]);
-    for (int s = 0; s < meshedDensities->size(); ++s) {
-        io.output<double, 2>(outputFileIdx, timeIdx, 1, (*meshedDensities)[s]);
+    for (int s = 0; s < densities->size(); ++s) {
+        io.output<double, 2>(outputFileIdx, timeIdx, 1, (*densities)[s]);
     }
 }
 

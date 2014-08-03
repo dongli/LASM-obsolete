@@ -135,7 +135,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q2", "N/A", "q1 correlated tracer");
     advectionManager.registerTracer("q3", "N/A", "slotted cylinders tracer");
     advectionManager.registerTracer("q4", "N/A", "Gaussian hills tracer");
-    meshedDensities = &advectionManager.getMeshedDensities();
+    densities = &advectionManager.getDensities();
     AdvectionTestCase::registerDefaultOutput();
     SpaceCoord x(2), c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);

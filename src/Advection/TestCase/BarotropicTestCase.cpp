@@ -82,7 +82,7 @@ void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q0", "N/A", "background tracer");
     advectionManager.registerTracer("q1", "N/A", "geopotential depth");
     advectionManager.registerTracer("q2", "N/A", "step tracer");
-    meshedDensities = &advectionManager.getMeshedDensities();
+    densities = &advectionManager.getDensities();
     AdvectionTestCase::registerDefaultOutput();
     double q[3*model.getMesh().getTotalNumGrid(CENTER)];
     int l = 0;
