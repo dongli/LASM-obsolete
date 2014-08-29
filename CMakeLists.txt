@@ -1,23 +1,25 @@
-# ------------------------------------------------------------------------------
-# CMake build script for LASM.
-#
-# Copyright (C) 2014.
-#
-# Authors:
-#
-#   - Li Dong <dongli@lasg.iap.ac.cn>
-# ------------------------------------------------------------------------------
-
 cmake_minimum_required (VERSION 2.8)
 
-# ------------------------------------------------------------------------------
+option (FLAG_OPENMP "Turn OpenMP compiler flag ON or OFF" OFF)
+option (FLAG_SHARED "Turn building shared libraries ON of OFF" OFF)
+
+if (FLAG_OPENMP)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+else ()
+    message ("@@ LASM does not use OpenMP compiler flag.")
+endif ()
+if (FLAG_SHARED)
+    set (shared_or_static SHARED)
+else ()
+    set (shared_or_static STATIC)
+endif ()
+
 project (lasm CXX)
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-extensions -fopenmp")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-# ------------------------------------------------------------------------------
-# external libraries
-# mlpack
+# Add external libraries.
+# MLPACK
 if (DEFINED ENV{MLPACK_ROOT})
     message ("@@ Use user provided library MLPACK.")
     message ("@@ MLPACK_ROOT = $ENV{MLPACK_ROOT}")
@@ -33,17 +35,17 @@ else ()
         "set MLPACK_ROOT (e.g. in .bashrc) to it."
     )
 endif ()
-
-# geomtk
+# HDF5
+find_package (HDF5 REQUIRED)
+include_directories (${HDF5_INCLUDE_DIRS})
+# GEOMTK
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
 include_directories (${GEOMTK_INCLUDE_DIRS})
-
-# barotropic-model
+# BAROTROPIC-MODEL
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/barotropic-model")
 include_directories (${BAROTROPIC_MODEL_INCLUDE_DIRS})
 
-# ------------------------------------------------------------------------------
-# source directory structure
+# Set source directory structure.
 set (source_directories
     "${PROJECT_SOURCE_DIR}/src"
     "${PROJECT_SOURCE_DIR}/src/Utils"
@@ -53,8 +55,7 @@ set (source_directories
     "${PROJECT_SOURCE_DIR}/src/Advection/TestCase"
 )
 
-# ------------------------------------------------------------------------------
-# collect sources and headers
+# Collect sources and headers.
 foreach (dir ${source_directories})
     include_directories ("${dir}")
     # header files
@@ -65,14 +66,12 @@ foreach (dir ${source_directories})
     list (APPEND sources ${tmp2})
 endforeach ()
 
-# ------------------------------------------------------------------------------
-# library targets
-add_library (lasm STATIC ${headers} ${sources})
+# Add library targets.
+add_library (lasm ${shared_or_static} ${headers} ${sources})
 target_link_libraries (lasm geomtk barotropic-model mlpack)
 add_dependencies (lasm geomtk barotropic-model)
 
-# ------------------------------------------------------------------------------
-# executable targets
+# Add executable targets.
 foreach (dir ${source_directories})
     if (EXISTS "${dir}/demo")
         include_directories ("${dir}/demo")
@@ -86,8 +85,7 @@ foreach (dir ${source_directories})
     endif ()
 endforeach ()
 
-# ------------------------------------------------------------------------------
-# install rules
+# Add install rules.
 if (${CMAKE_GENERATOR} MATCHES "Unix Makefiles")
     install (TARGETS lasm ARCHIVE DESTINATION lib)
     foreach (header ${headers})

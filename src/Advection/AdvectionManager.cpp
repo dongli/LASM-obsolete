@@ -84,8 +84,8 @@ void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
     // initialize mesh adpator
     meshAdaptor.init(domain, mesh);
     // initialize tree structure of mesh grids
-    cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
-    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
+    cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER, domain.getNumDim()); ++i) {
         cellCoords.col(i) = meshAdaptor.getCoord(i).getCartCoord();
     }
     cellTree = new Tree(cellCoords, cellCoordsMap);
@@ -108,7 +108,7 @@ void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx, double *q) {
     // copy the input tracer density onto internal mesh grids
     int l = 0;
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
             meshAdaptor.getDensity(timeIdx, s, i) = q[l];
             meshAdaptor.getMass(timeIdx, s, i) = q[l]*meshAdaptor.getVolume(i);
             l++;
@@ -194,7 +194,7 @@ void AdvectionManager::calcTotalMass(const TimeLevelIndex<2> &timeIdx) {
     // print total mass for each species
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
         totalMass.getLevel(timeIdx)[s] = 0;
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
             totalMass.getLevel(timeIdx)[s] += meshAdaptor.getMass(timeIdx, s, i);
         }
     }
@@ -331,7 +331,7 @@ void AdvectionManager::embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx) {
     meshAdaptor.resetContainedTracers();
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
-        int i = mesh->wrapIndex(tracer->getMeshIndex(timeIdx), CENTER);
+        int i = tracer->getMeshIndex(timeIdx).wrapIndex(*mesh, CENTER);
         meshAdaptor.containTracer(i, tracer);
     }
 }
@@ -500,8 +500,8 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
         }
     }
 #endif
-    cout << setw(20) << setprecision(10) << tmp1;
-    cout << setw(20) << setprecision(10) << tmp2 << endl;
+    // cout << setw(20) << setprecision(10) << tmp1;
+    // cout << setw(20) << setprecision(10) << tmp2 << endl;
 }
 
 void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
@@ -727,7 +727,7 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx,
     numVoidCell = 0;
     meshAdaptor.resetSpecies(timeIdx);
 #pragma omp parallel for
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
         if (meshAdaptor.getNumConnectedTracer(i) == 0) {
             if (numVoidCell == voidCells.size()) {
                 voidCells.push_back(i);
@@ -793,7 +793,7 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
                       std::fixed << setw(10) << setprecision(4) <<
                       biasPercent*100 << "%.");
 #pragma omp parallel for
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
             meshAdaptor.getDensity(timeIdx, s, i) *= fixer;
             meshAdaptor.getMass(timeIdx, s, i) =
                 meshAdaptor.getDensity(timeIdx, s, i)*meshAdaptor.getVolume(i);

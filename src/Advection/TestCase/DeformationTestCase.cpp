@@ -141,15 +141,15 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
     double hmax, r, g, a, b, c;
-    double q[5*mesh->getTotalNumGrid(CENTER)];
+    double q[5*mesh->getTotalNumGrid(CENTER, 2)];
     int l = 0;
     // background tracer
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
     // cosine hills tracer
     hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         mesh->getGridCoord(i, CENTER, x);
         double r0 = domain->calcDistance(x, c0);
         double r1 = domain->calcDistance(x, c1);
@@ -163,13 +163,12 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     }
     // tracer correlated to cosine hills tracer
     a = -0.8, b = 0.9;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-        q[l] = a*pow(q[l-mesh->getTotalNumGrid(CENTER)], 2)+b;
-        l++;
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
+        q[l] = a*pow(q[l-mesh->getTotalNumGrid(CENTER, 2)], 2)+b; l++;
     }
     // slotted cylinders tracer
     b = 0.1, c = 1.0, r = 0.5;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         mesh->getGridCoord(i, CENTER, x);
         double r0 = domain->calcDistance(x, c0);
         double r1 = domain->calcDistance(x, c1);
@@ -187,7 +186,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     }
     // Gaussian hills tracer
     hmax = 0.95, b = 5.0;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         mesh->getGridCoord(i, CENTER, x);
         x.transformToCart(*domain);
         vec d0 = x.getCartCoord()-c0.getCartCoord();

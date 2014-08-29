@@ -91,9 +91,9 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q1", "N/A", "cosine hill tracer");
     densities = &advectionManager.getDensities();
     AdvectionTestCase::registerDefaultOutput();
-    double q[2*mesh->getTotalNumGrid(CENTER)];
+    double q[2*mesh->getTotalNumGrid(CENTER, 2)];
     int l = 0;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
     calcSolution(0, timeIdx, *(*densities)[1]);

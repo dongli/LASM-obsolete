@@ -37,7 +37,7 @@ using geomtk::TimeLevels;
 using geomtk::TimeLevelIndex;
 using geomtk::SystemTools;
 using geomtk::TimeUnit;
-using geomtk::IOFrequencyUnit;
+using geomtk::TimeStepUnit;
 
 const int FULL = geomtk::RLLStagger::GridType::FULL;
 const int HALF = geomtk::RLLStagger::GridType::HALF;
@@ -59,8 +59,8 @@ typedef geomtk::RLLMesh Mesh;
 typedef geomtk::RLLMeshIndex MeshIndex;
 template <typename T, int N = 2>
 using Field = geomtk::RLLField<T, N>;
-typedef geomtk::NumericRLLField<double, 2> ScalarField;
-typedef geomtk::NumericRLLField<double, 1> SingleScalarField;
+typedef geomtk::RLLField<double, 2> ScalarField;
+typedef geomtk::RLLField<double, 1> SingleScalarField;
 typedef geomtk::RLLVelocityField VelocityField;
 typedef geomtk::RLLRegrid Regrid;
 typedef geomtk::TimeManager TimeManager;

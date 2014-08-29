@@ -25,14 +25,15 @@ MeshAdaptor::~MeshAdaptor() {
 void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
     this->domain = &domain;
     this->mesh = &mesh;
-    coords.resize(mesh.getTotalNumGrid(CENTER));
-    volumes.resize(mesh.getTotalNumGrid(CENTER));
-    numConnectedTracer.resize(mesh.getTotalNumGrid(CENTER));
-    connectedTracers.resize(mesh.getTotalNumGrid(CENTER));
-    remapWeights.resize(mesh.getTotalNumGrid(CENTER));
-    numContainedTracer.resize(mesh.getTotalNumGrid(CENTER));
-    containedTracers.resize(mesh.getTotalNumGrid(CENTER));
-    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
+    // TODO: 'coords' should be in geomtk::Mesh classes.
+    coords.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    volumes.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    numConnectedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    connectedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    remapWeights.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    numContainedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    containedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER, domain.getNumDim()); ++i) {
         coords[i] = new SpaceCoord(domain.getNumDim());
         mesh.getGridCoord(i, CENTER, *coords[i]);
         coords[i]->transformToCart(domain);
@@ -43,14 +44,14 @@ void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
 void MeshAdaptor::registerTracer(const string &name, const string &units,
                                  const string &brief) {
     densities.push_back(new ScalarField);
-    densities.back()->create(name, units, brief, *mesh, CENTER);
+    densities.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
     masses.push_back(new ScalarField);
-    masses.back()->create(name, units, brief, *mesh, CENTER);
+    masses.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
 }
 
 void MeshAdaptor::resetSpecies(const TimeLevelIndex<2> &timeIdx) {
     for (int s = 0; s < densities.size(); ++s) {
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
             (*densities[s])(timeIdx, i) = 0;
             (*masses[s])(timeIdx, i) = 0;
         }
@@ -58,13 +59,13 @@ void MeshAdaptor::resetSpecies(const TimeLevelIndex<2> &timeIdx) {
 }
     
 void MeshAdaptor::resetContainedTracers() {
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
         numContainedTracer[i] = 0;
     }
 }
 
 void MeshAdaptor::resetConnectedTracers() {
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
         numConnectedTracer[i] = 0;
     }
 }

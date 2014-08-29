@@ -16,9 +16,9 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
                              TimeManager &timeManager) {
     this->timeManager = &timeManager;
     io.init(timeManager);
-    string prefix, unit;
+    string pattern, unit;
     int freq;
-    configManager.getValue("test_case", "output_prefix", prefix);
+    configManager.getValue("test_case", "output_pattern", pattern);
     configManager.getValue("test_case", "output_freq_unit", unit);
     configManager.getValue("test_case", "output_freq", freq);
     if (configManager.hasKey("test_case", "restart_file")) {
@@ -28,38 +28,35 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
         configManager.getValue("test_case", "subcase", subcase);
     }
     if (unit == "steps") {
-        outputFileIdx = io.registerOutputFile(*mesh, prefix,
-                                              IOFrequencyUnit::STEPS, freq);
+        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+                                              TimeStepUnit::STEP, freq);
     } else if (unit == "minutes") {
-        outputFileIdx = io.registerOutputFile(*mesh, prefix,
-                                              IOFrequencyUnit::MINUTES, freq);
+        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+                                              TimeStepUnit::MINUTE, freq);
     } else if (unit == "hours") {
-        outputFileIdx = io.registerOutputFile(*mesh, prefix,
-                                              IOFrequencyUnit::HOURS, freq);
+        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+                                              TimeStepUnit::HOUR, freq);
     } else if (unit == "days") {
-        outputFileIdx = io.registerOutputFile(*mesh, prefix,
-                                              IOFrequencyUnit::DAYS, freq);
+        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+                                              TimeStepUnit::DAY, freq);
     } else {
         REPORT_ERROR("Under construction!");
     }
 }
 
 void AdvectionTestCase::registerDefaultOutput() {
-    io.file(outputFileIdx).registerOutputField<double, 2, FULL_DIMENSION>
-        (4, &velocity(0), &velocity(1), &velocity.getDivergence(),
-         &velocity.getVorticity()[0]);
+    io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
+                                         {&velocity(0), &velocity(1)});
     for (int s = 0; s < densities->size(); ++s) {
-        io.file(outputFileIdx).registerOutputField<double, 2, FULL_DIMENSION>
-            (1, (*densities)[s]);
+        io.file(outputFileIdx).registerField("double", FULL_DIMENSION, {(*densities)[s]});
     }
 }
 
 void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
-    io.output<double, 2>(outputFileIdx, timeIdx, 4, &velocity(0), &velocity(1),
-                         &velocity.getDivergence(), &velocity.getVorticity()[0]);
+    io.output<double, 2>(outputFileIdx, timeIdx, {&velocity(0), &velocity(1)});
     for (int s = 0; s < densities->size(); ++s) {
-        io.output<double, 2>(outputFileIdx, timeIdx, 1, (*densities)[s]);
+        io.output<double, 2>(outputFileIdx, timeIdx, {(*densities)[s]});
     }
 }
 
