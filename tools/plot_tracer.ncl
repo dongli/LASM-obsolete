@@ -4,11 +4,12 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    file_prefix = "lasm.barotropic.240x120"
-    run_type = "Debug"
+    root = "../build/Debug"
+    test_case = "rotation"
+    resolution = "240x120"
     time_stamp = "%5.5d"
-    start_time = 3740
-    end_time = 3740
+    start_time = 0
+    end_time = 40
     time_step = 1
     point_size = 0.001
     line_thickness = 1
@@ -16,9 +17,11 @@ begin
     PI = atan(1.0)*4
     RAD = PI/180
 
+    file_prefix = "lasm."+test_case+"."+resolution
+
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/"+run_type+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
+        "do printf '"+root+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
 
     f = addfile(fs(0), "r")
 
@@ -67,10 +70,10 @@ begin
     ; max_lon = 270.0
     ; min_lat = 10.0
     ; max_lat = 80.0
-    min_lon = 0
-    max_lon = 360
-    min_lat = -90
-    max_lat = 90
+    ; min_lon = 0
+    ; max_lon = 360
+    ; min_lat = -90
+    ; max_lat = 90
 
     do l = 0, num_time-1
         system("echo file: "+fs(l))
@@ -83,8 +86,8 @@ begin
         end if
         id = f->id
         c = f->c/RAD
-        ; res_map@gsnPolar = "NH"
-        ; res_map@mpMinLatF = 70
+        res_map@gsnPolar = "NH"
+        res_map@mpMinLatF = 70
         ; res_map@gsnPolar = "SH"
         ; res_map@mpMaxLatF = -60.0
         ; if (isdefined("check")) then
@@ -114,20 +117,20 @@ begin
         end if
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
-        ; do i = 0, num_tracer-1, 1
-        ;     if (isdefined("min_lon")) then
-        ;         if (.not. (c(i,0) .ge. min_lon .and. c(i,0) .le. max_lon .and. \
-        ;                    c(i,1) .ge. min_lat .and. c(i,1) .le. max_lat)) then
-        ;             continue
-        ;         end if
-        ;     end if
-        ;     if (isdefined("check") .and. any(check .eq. id(i))) then
-        ;         res_tracer@gsMarkerColor = "blue"
-        ;     else
-        ;         res_tracer@gsMarkerColor = "black"
-        ;     end if
-        ;     gsn_polymarker(wks, map, c(i,0), c(i,1), res_tracer)
-        ; end do
+        do i = 0, num_tracer-1, 10
+            if (isdefined("min_lon")) then
+                if (.not. (c(i,0) .ge. min_lon .and. c(i,0) .le. max_lon .and. \
+                           c(i,1) .ge. min_lat .and. c(i,1) .le. max_lat)) then
+                    continue
+                end if
+            end if
+            if (isdefined("check") .and. any(check .eq. id(i))) then
+                res_tracer@gsMarkerColor = "blue"
+            else
+                res_tracer@gsMarkerColor = "black"
+            end if
+            gsn_polymarker(wks, map, c(i,0), c(i,1), res_tracer)
+        end do
         ; draw the shape within a region
         if (isdefined("min_lon")) then
             do i = 0, num_tracer-1, 2

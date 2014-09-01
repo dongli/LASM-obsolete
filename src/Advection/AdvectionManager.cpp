@@ -331,7 +331,7 @@ void AdvectionManager::embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx) {
     meshAdaptor.resetContainedTracers();
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
-        int i = tracer->getMeshIndex(timeIdx).wrapIndex(*mesh, CENTER);
+        int i = tracer->getMeshIndex(timeIdx).getIndex(*mesh, CENTER);
         meshAdaptor.containTracer(i, tracer);
     }
 }

@@ -46,15 +46,19 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
 
 void AdvectionTestCase::registerDefaultOutput() {
     io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
-                                         {&velocity(0), &velocity(1)});
+                                         {&velocity(0), &velocity(1),
+                                          &velocity.getDivergence()});
     for (int s = 0; s < densities->size(); ++s) {
-        io.file(outputFileIdx).registerField("double", FULL_DIMENSION, {(*densities)[s]});
+        io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
+                                             {(*densities)[s]});
     }
 }
 
 void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
-    io.output<double, 2>(outputFileIdx, timeIdx, {&velocity(0), &velocity(1)});
+    io.output<double, 2>(outputFileIdx, timeIdx,
+                         {&velocity(0), &velocity(1),
+                          &velocity.getDivergence()});
     for (int s = 0; s < densities->size(); ++s) {
         io.output<double, 2>(outputFileIdx, timeIdx, {(*densities)[s]});
     }

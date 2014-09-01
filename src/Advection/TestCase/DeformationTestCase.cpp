@@ -137,7 +137,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q4", "N/A", "Gaussian hills tracer");
     densities = &advectionManager.getDensities();
     AdvectionTestCase::registerDefaultOutput();
-    SpaceCoord x(2), c0(2), c1(2);
+    SpaceCoord c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
     double hmax, r, g, a, b, c;
@@ -150,7 +150,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     // cosine hills tracer
     hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        mesh->getGridCoord(i, CENTER, x);
+        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
         double r0 = domain->calcDistance(x, c0);
         double r1 = domain->calcDistance(x, c1);
         if (r0 < r) {
@@ -169,7 +169,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     // slotted cylinders tracer
     b = 0.1, c = 1.0, r = 0.5;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        mesh->getGridCoord(i, CENTER, x);
+        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
         double r0 = domain->calcDistance(x, c0);
         double r1 = domain->calcDistance(x, c1);
         if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
@@ -187,8 +187,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     // Gaussian hills tracer
     hmax = 0.95, b = 5.0;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        mesh->getGridCoord(i, CENTER, x);
-        x.transformToCart(*domain);
+        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
         vec d0 = x.getCartCoord()-c0.getCartCoord();
         vec d1 = x.getCartCoord()-c1.getCartCoord();
         q[l++] = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));

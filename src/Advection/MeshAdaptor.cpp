@@ -11,9 +11,6 @@ MeshAdaptor::MeshAdaptor() {
     
 MeshAdaptor::~MeshAdaptor() {
     if (mesh != NULL) {
-        for (int i = 0; i < coords.size(); ++i) {
-            delete coords[i];
-        }
         for (int i = 0; i < densities.size(); ++i) {
             delete densities[i];
             delete masses[i];
@@ -25,8 +22,6 @@ MeshAdaptor::~MeshAdaptor() {
 void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
     this->domain = &domain;
     this->mesh = &mesh;
-    // TODO: 'coords' should be in geomtk::Mesh classes.
-    coords.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
     volumes.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
     numConnectedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
     connectedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
@@ -34,9 +29,6 @@ void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
     numContainedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
     containedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER, domain.getNumDim()); ++i) {
-        coords[i] = new SpaceCoord(domain.getNumDim());
-        mesh.getGridCoord(i, CENTER, *coords[i]);
-        coords[i]->transformToCart(domain);
         volumes[i] = mesh.getCellVolume(i);
     }
 }

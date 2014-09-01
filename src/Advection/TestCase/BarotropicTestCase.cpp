@@ -94,9 +94,8 @@ void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
         q[l++] = gd(i);
     }
     // step tracer
-    SpaceCoord x(2);
     for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
-        mesh->getGridCoord(i, CENTER, x);
+        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
         if (x(0) > 160*RAD && x(0) < 200*RAD &&
             x(1) > 10*RAD  && x(1) < 40*RAD) {
             q[l++] = 1;

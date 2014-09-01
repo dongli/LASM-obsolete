@@ -14,7 +14,6 @@ private:
     const Mesh *mesh;
     vector<ScalarField*> densities;
     vector<ScalarField*> masses;
-    vector<SpaceCoord*> coords;
     vector<double> volumes;
     vector<int> numConnectedTracer;
     vector<vector<Tracer*> > connectedTracers;
@@ -74,7 +73,7 @@ public:
      *
      *  @return The center grid coordinate.
      */
-    const SpaceCoord& getCoord(int i) const { return *coords[i]; }
+    const SpaceCoord& getCoord(int i) const { return mesh->getGridCoord(CENTER, i); }
 
     /**
      *  Return the volume of a cell.
