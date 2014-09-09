@@ -1,16 +1,16 @@
-#ifndef __LASM_DeformationTestCase__
-#define __LASM_DeformationTestCase__
+#ifndef __Geomtk_CartesianRotationTestCase__
+#define __Geomtk_CartesianRotationTestCase__
 
+#include "lasm_commons.h"
 #include "AdvectionTestCase.h"
 
 namespace lasm {
 
-class DeformationTestCase : public AdvectionTestCase {
-protected:
-    double period;
+class CartesianRotationTestCase : public AdvectionTestCase {
+    double angleSpeed;
 public:
-    DeformationTestCase();
-    ~DeformationTestCase();
+    CartesianRotationTestCase();
+    virtual ~CartesianRotationTestCase();
 
     virtual void init(const ConfigManager &configManager,
                       TimeManager &timeManager);
@@ -26,4 +26,4 @@ public:
 
 }
 
-#endif // __LASM_DeformationTestCase__
+#endif

@@ -84,7 +84,11 @@ void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
     // initialize mesh adpator
     meshAdaptor.init(domain, mesh);
     // initialize tree structure of mesh grids
+#if defined USE_SPHERE_DOMAIN
     cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+#elif defined USE_CARTESIAN_DOMAIN
+    cellCoords.reshape(domain.getNumDim(), mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
+#endif
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER, domain.getNumDim()); ++i) {
         cellCoords.col(i) = meshAdaptor.getCoord(i).getCartCoord();
     }
@@ -153,7 +157,7 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 }
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
-                               const geomtk::RLLVelocityField &velocity) {
+                               const VelocityField &velocity) {
     static clock_t time1, time2;
 
     time1 = clock();
@@ -220,7 +224,7 @@ void AdvectionManager::integrate_RK4(double dt,
     TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
     TimeLevelIndex<2> halfTimeIdx = newTimeIdx-0.5;
     double dt05 = 0.5*dt;
-    const VelocityField::FieldType &divergence = velocity.getDivergence();
+    const auto &divergence = velocity.getDivergence();
 #pragma omp parallel for
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
@@ -240,8 +244,9 @@ void AdvectionManager::integrate_RK4(double dt,
         SpaceCoord &x1 = tracer->getX(newTimeIdx);
         MeshIndex &idx0 = tracer->getMeshIndex(oldTimeIdx);
         MeshIndex &idx1 = tracer->getMeshIndex(newTimeIdx);
+#ifdef USE_RLL_MESH
         // TODO: Should we hide the following codes? Because they are
-        //       related to sphere domain.
+        //       related to sphere domain and RLL mesh.
         if (idx0.isOnPole()) {
             idx0.setMoveOnPole(true);
             idx1.setMoveOnPole(true);
@@ -250,6 +255,7 @@ void AdvectionManager::integrate_RK4(double dt,
             idx0.setMoveOnPole(false);
             idx1.setMoveOnPole(false);
         }
+#endif
         // stage 1
         regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
         regrid->run(BILINEAR, oldTimeIdx, divergence, x0, div, &idx0);
@@ -288,7 +294,9 @@ void AdvectionManager::integrate_RK4(double dt,
         v = (v1+v2*2.0+v3*2.0+v4)/6.0;
         mesh->move(x0, dt, v, idx0, x1);
         idx1.locate(*mesh, x1);
+#ifdef USE_SPHERE_DOMAIN
         x1.transformToCart(*domain);
+#endif
         // update skeleton points of tracer
         TracerSkeleton &s = tracer->getSkeleton();
         vector<SpaceCoord*> &x0s = s.getSpaceCoords(oldTimeIdx);
@@ -296,6 +304,7 @@ void AdvectionManager::integrate_RK4(double dt,
         vector<MeshIndex*> &idx0s = s.getMeshIdxs(oldTimeIdx);
         vector<MeshIndex*> &idx1s = s.getMeshIdxs(newTimeIdx);
         for (int i = 0; i < x0s.size(); ++i) {
+#ifdef USE_RLL_MESH
             if (idx0s[i]->isOnPole()) {
                 idx0s[i]->setMoveOnPole(true);
                 idx1s[i]->setMoveOnPole(true);
@@ -304,6 +313,7 @@ void AdvectionManager::integrate_RK4(double dt,
                 idx0s[i]->setMoveOnPole(false);
                 idx1s[i]->setMoveOnPole(false);
             }
+#endif
             // stage 1
             regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
             mesh->move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
@@ -321,7 +331,9 @@ void AdvectionManager::integrate_RK4(double dt,
             v = (v1+v2*2.0+v3*2.0+v4)/6.0;
             mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(*mesh, *x1s[i]);
+#ifdef USE_SPHERE_DOMAIN
             x1s[i]->transformToCart(*domain);
+#endif
         }
         tracer->updateDeformMatrix(*domain, *mesh, newTimeIdx);
     }
@@ -422,20 +434,29 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
         }
         if (tracers.size() > 1) {
             vec x0(2);
+#ifdef USE_SPHERE_DOMAIN
             domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                             tracer->getX(timeIdx),
                             tracer->getLongAxisVertexSpaceCoord(), x0);
+#else
+            x0 = tracer->getLongAxisVertexSpaceCoord()()-tracer->getX(timeIdx)();
+#endif
             vec x1(2), x2(2);
             vec cosThetas(tracers.size());
             for (int i = 0; i < tracers.size(); ++i) {
                 Tracer *tracer1 = tracers[i];
                 if (tracer1 == tracer) continue;
+#ifdef USE_SPHERE_DOMAIN
                 domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                                 tracer->getX(timeIdx),
                                 tracer1->getX(timeIdx), x1);
                 domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                                 tracer->getX(timeIdx),
                                 tracer1->getLongAxisVertexSpaceCoord(), x2);
+#else
+                x1 = tracer1->getX(timeIdx)()-tracer->getX(timeIdx)();
+                x2 = tracer1->getLongAxisVertexSpaceCoord()()-tracer->getX(timeIdx)();
+#endif
                 cosThetas[i] = fabs(norm_dot(x0, x2-x1));
             }
             double disorderDegree = mean(cosThetas)/(min(cosThetas)+1.0e-15);
@@ -526,18 +547,26 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
 #endif
         // calcuate mixing weights
         vec x0(2);
+#ifdef USE_SPHERE_DOMAIN
         domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                         tracer->getX(timeIdx),
                         tracer->getLongAxisVertexSpaceCoord(), x0);
+#else
+        x0 = tracer->getLongAxisVertexSpaceCoord()()-tracer->getX(timeIdx)();
+#endif
         double n0 = norm(x0, 2);
         vec x1(2);
         vec weights(meshAdaptor.getNumConnectedTracer(cell), arma::fill::zeros);
         for (int i = 0; i < meshAdaptor.getNumConnectedTracer(cell); ++i) {
             Tracer *tracer1 = surroundTracers[i];
             if (tracer1 == tracer) continue;
+#ifdef USE_SPHERE_DOMAIN
             domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                             tracer->getX(timeIdx),
                             tracer1->getX(timeIdx), x1);
+#else
+            x1 = tracer1->getX(timeIdx)()-tracer->getX(timeIdx)();
+#endif
             x1 /= n0;
             double cosTheta = norm_dot(x0, x1);
             double sinTheta = sqrt(1-cosTheta*cosTheta);
@@ -640,7 +669,11 @@ void AdvectionManager::fillVoidCells(const TimeLevelIndex<2> &timeIdx) {
         int cell = voidCells[c];
         Searcher a(cellTree, NULL, cellCoords,
                    meshAdaptor.getCoord(cell).getCartCoord(), true);
+#ifdef USE_SPHERE_DOMAIN
         double searchRadius = 1*RAD*domain->getRadius();
+#else
+        double searchRadius = 0.1*domain->getAxisSpan(0);
+#endif
         while (true) {
             mlpack::math::Range r(0.0, searchRadius);
             vector<vector<size_t> > neighbors;

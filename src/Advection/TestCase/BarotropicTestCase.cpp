@@ -1,5 +1,7 @@
 #include "BarotropicTestCase.h"
 
+#ifdef USE_SPHERE_DOMAIN
+
 namespace lasm {
 
 BarotropicTestCase::BarotropicTestCase() {
@@ -50,6 +52,14 @@ double BarotropicTestCase::getStepSize() const {
     } else {
         REPORT_ERROR("Unspecified time step size!");
     }
+}
+
+const Domain& BarotropicTestCase::getDomain() const  {
+    return model.getDomain();
+}
+
+const Mesh& BarotropicTestCase::getMesh() const  {
+    return model.getMesh();
 }
 
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
@@ -138,5 +148,7 @@ void BarotropicTestCase::advance(double time,
         velocity.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
 }
-    
-}
+
+} // lasm
+
+#endif

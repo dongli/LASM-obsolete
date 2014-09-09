@@ -38,28 +38,27 @@ Parcel& Parcel::operator=(const Parcel &other) {
 void Parcel::getSpaceCoord(const Domain &domain,
                            const TimeLevelIndex<2> &timeIdx,
                            const BodyCoord &y, SpaceCoord &x) {
-#ifdef LASM_USE_SPHERE_DOMAIN
+#if defined USE_SPHERE_DOMAIN
     // In sphere domain, we calculate deformation matrix stuffs on local
     // stereographic projection of tracer centroid.
     x() = (*H.getLevel(timeIdx))*y();
     domain.projectBack(geomtk::SphereDomain::STEREOGRAPHIC,
                        *q.getLevel(timeIdx), x, x());
-#else
-    REPORT_ERROR("Under construction!");
+#elif defined USE_CARTESIAN_DOMAIN
     x() = (*q.getLevel(timeIdx))()+(*H.getLevel(timeIdx))*y();
+    domain.constrain(x);
 #endif
 }
 
 void Parcel::getBodyCoord(const Domain &domain,
                           const TimeLevelIndex<2> &timeIdx,
                           const SpaceCoord &x, BodyCoord &y) {
-#ifdef LASM_USE_SPHERE_DOMAIN
+#ifdef USE_SPHERE_DOMAIN
     domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
                    *q.getLevel(timeIdx), x, y());
     y() = (*invH.getLevel(timeIdx))*y();
-#else
-    REPORT_ERROR("Under construction!");
-    y() = (*invH.getLevel(timeIdx))*(x()-(*q.getLevel(timeIdx))());
+#elif defined USE_CARTESIAN_DOMAIN
+    y() = (*invH.getLevel(timeIdx))*domain.diffCoord(x, (*q.getLevel(timeIdx)));
 #endif
 }
     

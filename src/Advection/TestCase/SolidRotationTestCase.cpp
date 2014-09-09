@@ -1,5 +1,7 @@
 #include "SolidRotationTestCase.h"
 
+#ifdef USE_SPHERE_DOMAIN
+
 namespace lasm {
 
 SolidRotationTestCase::SolidRotationTestCase() {
@@ -127,4 +129,6 @@ void SolidRotationTestCase::calcSolution(double dt,
     }
 }
 
-}
+} // lasm
+
+#endif

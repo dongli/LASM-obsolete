@@ -17,12 +17,12 @@ public:
     virtual void init(const ConfigManager &configManager,
                       TimeManager &timeManager);
 
-    Time getStartTime() const;
-    Time getEndTime() const;
-    double getStepSize() const;
+    virtual Time getStartTime() const;
+    virtual Time getEndTime() const;
+    virtual double getStepSize() const;
 
-    virtual const Domain& getDomain() const { return model.getDomain(); }
-    virtual const Mesh& getMesh() const { return model.getMesh(); }
+    virtual const Domain& getDomain() const;
+    virtual const Mesh& getMesh() const;
     
     virtual void calcInitCond(AdvectionManager &advectionManager);
     

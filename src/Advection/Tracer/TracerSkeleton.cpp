@@ -79,7 +79,7 @@ void TracerSkeleton::init(const Domain &domain, const Mesh &mesh,
     const SpaceCoord &x0 = host->getX(initTimeIdx);
     if (domain.getNumDim() == 2) {
         double dtheta = PI2/y.size();
-#ifdef LASM_USE_SPHERE_DOMAIN
+#if defined USE_SPHERE_DOMAIN
         double lon, lat = M_PI_2-size/domain.getRadius();
         SpaceCoord xr(domain.getNumDim());
         for (int i = 0; i < y.size(); ++i) {
@@ -88,12 +88,12 @@ void TracerSkeleton::init(const Domain &domain, const Mesh &mesh,
             domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
             x.getLevel(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
         }
-#else
-        REPORT_ERROR("Under construction!");
+#elif defined USE_CARTESIAN_DOMAIN
         for (int i = 0; i < y.size(); ++i) {
             double theta = i*dtheta;
             (*x.getLevel(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
             (*x.getLevel(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
+            domain.constrain(*x.getLevel(initTimeIdx)[i]);
         }
 #endif
     } else if (domain.getNumDim() == 3) {
@@ -107,14 +107,14 @@ void TracerSkeleton::init(const Domain &domain, const Mesh &mesh,
 void TracerSkeleton::updateLocalCoord(const Domain &domain,
                                       const TimeLevelIndex<2> &timeIdx) {
     const SpaceCoord &x0 = host->getX(timeIdx);
-#ifdef LASM_USE_SPHERE_DOMAIN
+#ifdef USE_SPHERE_DOMAIN
     for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
         domain.project(geomtk::SphereDomain::STEREOGRAPHIC, x0,
                        *x.getLevel(timeIdx)[i], xl.getLevel(timeIdx)[i]);
     }
 #else
     for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
-        xl.getLevel(timeIdx)[i] = (*x.getLevel(timeIdx)[i])()-x0();
+        xl.getLevel(timeIdx)[i] = domain.diffCoord((*x.getLevel(timeIdx)[i]), x0);
     }
 #endif
 }

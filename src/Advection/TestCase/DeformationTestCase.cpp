@@ -1,5 +1,7 @@
 #include "DeformationTestCase.h"
 
+#ifdef USE_SPHERE_DOMAIN
+
 namespace lasm {
 
 DeformationTestCase::DeformationTestCase() {
@@ -197,4 +199,6 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.input(timeIdx, q);
 }
 
-}
+} // lasm
+
+#endif

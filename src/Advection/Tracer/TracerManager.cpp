@@ -13,19 +13,68 @@ TracerManager::~TracerManager() {
     REPORT_OFFLINE;
 }
 
+#if defined USE_CARTESIAN_DOMAIN
 void TracerManager::init(const Domain &domain, const Mesh &mesh,
-                         const geomtk::ConfigManager &configManager) {
+                         const ConfigManager &configManager) {
     this->domain = &domain;
+    if (configManager.hasKey("lasm", "scale0")) {
+        configManager.getValue("lasm", "scale0", scale0);
+    }
     int numParcel = 0;
     int numParcelX, numParcelY;
     configManager.getValue("lasm", "num_parcel_x", numParcelX);
     configManager.getValue("lasm", "num_parcel_y", numParcelY);
+    numParcel = numParcelX*numParcelY;
+    tracers.resize(numParcel);
+    int id = 0;
+    for (int t = 0; t < tracers.size(); ++t) {
+        tracers[t] = new Tracer(domain.getNumDim());
+        tracers[t]->setID(id++);
+    }
+    TimeLevelIndex<2> timeIdx;
+    for (int t = 0; t < tracers.size(); ++t) {
+        Tracer *tracer = tracers[t];
+        // set coordinate
+        SpaceCoord &x0 = tracer->getX(timeIdx);
+        vec h(domain.getNumDim());
+        double dx = domain.getAxisSpan(0)/numParcelX;
+        double dy = domain.getAxisSpan(1)/numParcelY;
+        int l = 0;
+        for (int j = 0; j < numParcelY; ++j) {
+            for (int i = 0; i < numParcelX; ++i) {
+                if (l == tracer->getID()) {
+                    double y = domain.getAxisStart(1)+dy*0.5+dy*j;
+                    double x = domain.getAxisStart(0)+dx*0.5+dx*i;
+                    x0.setCoord(x, y);
+                    l = -1;
+                    break;
+                }
+                l++;
+            }
+            if (l == -1) break;
+        }
+        h(0) = dx;
+        h(1) = dy;
+        h *= scale0;
+        MeshIndex &idx0 = tracer->getMeshIndex(timeIdx);
+        idx0.locate(mesh, x0);
+        tracer->getSkeleton().init(domain, mesh, h.max());
+        tracer->getH(timeIdx).eye();
+        tracer->updateDeformMatrix(domain, mesh, timeIdx);
+    }
+}
+#elif defined USE_SPHERE_DOMAIN
+void TracerManager::init(const Domain &domain, const Mesh &mesh,
+                         const geomtk::ConfigManager &configManager) {
+    this->domain = &domain;
     if (configManager.hasKey("lasm", "scale0")) {
         configManager.getValue("lasm", "scale0", scale0);
     }
-    // calculate the total number of tracers
-//#define USE_FULL_LAT_LON
-#ifdef LASM_USE_SPHERE_DOMAIN
+    int numParcel = 0;
+    int numParcelX, numParcelY;
+    configManager.getValue("lasm", "num_parcel_x", numParcelX);
+    configManager.getValue("lasm", "num_parcel_y", numParcelY);
+    //#define USE_FULL_LAT_LON
 #ifdef USE_FULL_LAT_LON
     numParcel = numParcelX*numParcelY;
 #else
@@ -52,22 +101,18 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         numParcel += numParcelX_;
     }
 #endif
-#else
-    REPORT_ERROR("Under construction!");
-#endif
     tracers.resize(numParcel);
     int id = 0;
     for (int t = 0; t < tracers.size(); ++t) {
         tracers[t] = new Tracer(domain.getNumDim());
         tracers[t]->setID(id++);
     }
-    TimeLevelIndex<2> initTimeIdx;
+    TimeLevelIndex<2> timeIdx;
     for (int t = 0; t < tracers.size(); ++t) {
         Tracer *tracer = tracers[t];
         // set coordinate
-        SpaceCoord &x0 = tracer->getX(initTimeIdx);
+        SpaceCoord &x0 = tracer->getX(timeIdx);
         vec h(domain.getNumDim());
-#ifdef LASM_USE_SPHERE_DOMAIN
 #ifdef USE_FULL_LAT_LON
         double dlon = domain.getAxisSpan(0)/numParcelX;
         double dlat = domain.getAxisSpan(1)/numParcelY;
@@ -124,11 +169,8 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         // The selection of h can be tricky. When h *= 1.5, the errors of solid
         // rotation test is oscillatory with time.
         h *= scale0;
-#else
-        REPORT_ERROR("Under construction!");
-#endif
         // set mesh index
-        MeshIndex &idx0 = tracer->getMeshIndex(initTimeIdx);
+        MeshIndex &idx0 = tracer->getMeshIndex(timeIdx);
         idx0.locate(mesh, x0);
         // TODO: This may be unnecessary.
         // when tracer is on Pole, transform its coordinate to PS for later use
@@ -138,12 +180,12 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         // set tracer skeleton
         tracer->getSkeleton().init(domain, mesh, h.max());
         // set deformation matrix
-        tracer->getH(initTimeIdx).eye();
-        tracer->updateDeformMatrix(domain, mesh, initTimeIdx);
+        tracer->getH(timeIdx).eye();
+        tracer->updateDeformMatrix(domain, mesh, timeIdx);
     }
-    // -------------------------------------------------------------------------
-    REPORT_NOTICE(numParcel << " tracers are initialized.");
+    REPORT_NOTICE(tracers.size() << " tracers are initialized.");
 }
+#endif
 
 void TracerManager::registerTracer(const string &name, const string &units,
                                    const string &brief) {
