@@ -13,7 +13,6 @@ class AdvectionManager {
 protected:
     const Domain *domain;
     const Mesh *mesh;
-    const TimeManager *timeManager;
     TracerManager tracerManager;
     MeshAdaptor meshAdaptor;
     Regrid *regrid;
@@ -56,8 +55,7 @@ public:
      *  @param timeManager   the time manager.
      */
     void init(const Domain &domain, const Mesh &mesh,
-              const ConfigManager &configManager,
-              const TimeManager &timeManager);
+              const ConfigManager &configManager);
 
     /**
      *  Return the meshed tracer density array.

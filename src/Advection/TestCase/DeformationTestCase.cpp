@@ -58,70 +58,53 @@ void DeformationTestCase::advance(double time,
     // advance velocity
     if (subcase == "case1") {
         k = 2.4;
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
-                velocity(0)(timeIdx, i, j) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(0)(timeIdx, i) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
         }
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
-                velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(1)(timeIdx, i) = k*0.5*sin(lon)*cos(lat)*cosT;
         }
     } else if (subcase == "case2") {
         k = 2.0;
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
-                velocity(0)(timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(0)(timeIdx, i) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
         }
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
-                velocity(1)(timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(1)(timeIdx, i) = k*sin(lon*2.0)*cos(lat)*cosT;
         }
     } else if (subcase == "case3") {
         k = 5.0*R/period;
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
-                velocity(0)(timeIdx, i, j) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*
-                                        pow(cos(lat), 2.0)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(0)(timeIdx, i) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
         }
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
-                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
-                velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+            double lon = x(0), lat = x(1);
+            velocity(1)(timeIdx, i) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
         }
     } else if (subcase == "case4") {
         k = 10.0*R/period;
         double c1 = PI2*time/period;
         double c2 = PI2*R/period;
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i)-c1;
-                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
-                velocity(0)(timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+            double lon = x(0)-c1, lat = x(1);
+            velocity(0)(timeIdx, i) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
         }
-        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
-                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i)-c1;
-                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
-                velocity(1)(timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
-            }
+        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+            double lon = x(0)-c1, lat = x(1);
+            velocity(1)(timeIdx, i) = k*sin(lon*2.0)*cos(lat)*cosT;
         }
     }
     if (timeIdx.isCurrentIndex()) {

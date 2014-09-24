@@ -42,12 +42,17 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
     } else {
         REPORT_ERROR("Under construction!");
     }
+    volumes.create("vol", "m2", "grid cell volume", *mesh, CENTER, 2);
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
+        volumes(i) = mesh->getCellVolume(i);
+    }
 }
 
 void AdvectionTestCase::registerDefaultOutput() {
     io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                          {&velocity(0), &velocity(1),
-                                          &velocity.getDivergence()});
+                                          &velocity.getDivergence(),
+                                          &volumes});
     for (int s = 0; s < densities->size(); ++s) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                              {(*densities)[s]});
@@ -58,7 +63,7 @@ void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
     io.output<double, 2>(outputFileIdx, timeIdx,
                          {&velocity(0), &velocity(1),
-                          &velocity.getDivergence()});
+                          &velocity.getDivergence(), &volumes});
     for (int s = 0; s < densities->size(); ++s) {
         io.output<double, 2>(outputFileIdx, timeIdx, {(*densities)[s]});
     }

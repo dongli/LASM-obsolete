@@ -7,7 +7,6 @@ namespace lasm {
 AdvectionManager::AdvectionManager() {
     domain = NULL;
     mesh = NULL;
-    timeManager = NULL;
     regrid = NULL;
     cellTree = NULL;
     numMixedTracer = 0;
@@ -35,11 +34,9 @@ AdvectionManager::~AdvectionManager() {
 }
 
 void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
-                            const ConfigManager &configManager,
-                            const TimeManager &timeManager) {
+                            const ConfigManager &configManager) {
     this->domain = &domain;
     this->mesh = &mesh;
-    this->timeManager = &timeManager;
     TimeLevelIndex<2> timeIdx;
     assert(timeIdx.get() == 0);
     // get parameters from configuration manager
@@ -174,7 +171,7 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     connectTracersAndMesh(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("connectTracersAndMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
-    
+
     time1 = clock();
     remapTracersToMesh(newTimeIdx, &velocity);
     time2 = clock();

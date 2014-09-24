@@ -2,21 +2,19 @@
 
 namespace lasm {
 
-#define NUM_SKELETON_POINT numDim*2
-
 TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
     this->host = host;
+    y.resize(numDim*2);
     for (int l = 0; l < x.getNumLevel(); ++l) {
-        x.getLevel(l).resize(NUM_SKELETON_POINT);
-        idx.getLevel(l).resize(NUM_SKELETON_POINT);
-        xl.getLevel(l).resize(NUM_SKELETON_POINT);
+        x.getLevel(l).resize(y.size());
+        idx.getLevel(l).resize(y.size());
+        xl.getLevel(l).resize(y.size());
         for (int i = 0; i < x.getLevel(l).size(); ++i) {
             x.getLevel(l)[i] = new SpaceCoord(numDim);
             idx.getLevel(l)[i] = new MeshIndex(numDim);
             xl.getLevel(l)[i].set_size(numDim);
         }
     }
-    y.resize(NUM_SKELETON_POINT);
     for (int i = 0; i < y.size(); ++i) {
         y[i] = new BodyCoord(numDim);
     }
@@ -27,7 +25,12 @@ TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
         (*y[2])() <<   d << 0.0 << arma::endr;
         (*y[3])() << 0.0 <<   d << arma::endr;
     } else if (numDim == 3) {
-        REPORT_ERROR("Under construction!");
+        (*y[0])() <<  -d << 0.0 << 0.0 << arma::endr;
+        (*y[1])() << 0.0 <<  -d << 0.0 << arma::endr;
+        (*y[2])() <<   d << 0.0 << 0.0 << arma::endr;
+        (*y[3])() << 0.0 <<   d << 0.0 << arma::endr;
+        (*y[4])() << 0.0 << 0.0 <<  -d << arma::endr;
+        (*y[5])() << 0.0 << 0.0 <<   d << arma::endr;
     }
 }
 
@@ -77,27 +80,27 @@ void TracerSkeleton::init(const Domain &domain, const Mesh &mesh,
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
     const SpaceCoord &x0 = host->getX(initTimeIdx);
-    if (domain.getNumDim() == 2) {
-        double dtheta = PI2/y.size();
+    double dtheta = PI2/4;
 #if defined USE_SPHERE_DOMAIN
-        double lon, lat = M_PI_2-size/domain.getRadius();
-        SpaceCoord xr(domain.getNumDim());
-        for (int i = 0; i < y.size(); ++i) {
-            lon = i*dtheta;
-            xr.setCoord(lon, lat);
-            domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
-            x.getLevel(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
-        }
+    double lon, lat = M_PI_2-size/domain.getRadius();
+    SpaceCoord xr(domain.getNumDim());
+    for (int i = 0; i < 4; ++i) {
+        lon = i*dtheta;
+        xr.setCoord(lon, lat);
+        domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
+        x.getLevel(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
+    }
 #elif defined USE_CARTESIAN_DOMAIN
-        for (int i = 0; i < y.size(); ++i) {
-            double theta = i*dtheta;
-            (*x.getLevel(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
-            (*x.getLevel(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
-            domain.constrain(*x.getLevel(initTimeIdx)[i]);
-        }
+    for (int i = 0; i < 4; ++i) {
+        double theta = i*dtheta;
+        (*x.getLevel(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
+        (*x.getLevel(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
+        domain.constrain(*x.getLevel(initTimeIdx)[i]);
+    }
 #endif
-    } else if (domain.getNumDim() == 3) {
+    if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
+        
     }
     for (int i = 0; i < y.size(); ++i) {
         idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);
