@@ -104,10 +104,10 @@ public:
      *
      *  @param dt         the time step size.
      *  @param oldTimeIdx the new time level index.
-     *  @param V          the velocity field.
+     *  @param velocity   the velocity field.
      */
     void advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
-                 const VelocityField &V);
+                 const VelocityField &velocity);
 
     /**
      *  Calculate the total mass of every tracer species, and store the results

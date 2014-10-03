@@ -135,13 +135,18 @@ void BarotropicTestCase::advance(double time,
     } else {
         model.integrate(timeIdx-1, getStepSize());
     }
-    for (int j = 0; j < model.getMesh().getNumGrid(1, velocity(0).getGridType(1)); ++j) {
-        for (int i = 0; i < model.getMesh().getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+    int lonGridType, latGridType;
+    lonGridType = velocity(0).getGridType(0);
+    latGridType = velocity(0).getGridType(1);
+    for (int j = model.getMesh().js(latGridType); j <= model.getMesh().je(latGridType); ++j) {
+        for (int i = model.getMesh().is(lonGridType); i <= model.getMesh().ie(lonGridType); ++i) {
             velocity(0)(timeIdx, i, j) = model.getZonalWind()(timeIdx, i, j);
         }
     }
-    for (int j = 0; j < model.getMesh().getNumGrid(1, velocity(1).getGridType(1)); ++j) {
-        for (int i = 0; i < model.getMesh().getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+    lonGridType = velocity(1).getGridType(0);
+    latGridType = velocity(1).getGridType(1);
+    for (int j = model.getMesh().js(latGridType); j <= model.getMesh().je(latGridType); ++j) {
+        for (int i = model.getMesh().is(lonGridType); i <= model.getMesh().ie(lonGridType); ++i) {
             velocity(1)(timeIdx, i, j) = model.getMeridionalWind()(timeIdx, i, j);
         }
     }

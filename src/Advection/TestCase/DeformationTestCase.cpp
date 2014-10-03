@@ -126,7 +126,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
     double hmax, r, g, a, b, c;
-    double q[5*mesh->getTotalNumGrid(CENTER, 2)];
+    double *q = new double[5*mesh->getTotalNumGrid(CENTER, 2)];
     int l = 0;
     // background tracer
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
