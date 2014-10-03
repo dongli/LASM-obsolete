@@ -22,6 +22,9 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     if (configManager.hasKey("test_case", "num_lat")) {
         configManager.getValue("test_case", "num_lat", numLat);
     }
+    if (configManager.hasKey("test_case", "subcase")) {
+        configManager.getValue("test_case", "subcase", subcase);
+    }
     model.init(timeManager, numLon, numLat);
     domain = &model.getDomain();
     mesh = &model.getMesh();

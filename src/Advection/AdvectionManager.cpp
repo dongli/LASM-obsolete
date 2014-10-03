@@ -364,16 +364,20 @@ void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
         double w = tracer->getShapeFunction(timeIdx, y);
         if (w > 0.0) {
 #pragma omp critical
-            meshAdaptor.connectTracer(j, tracer, w);
-            tracer->connectCell(j);
+            {
+                meshAdaptor.connectTracer(j, tracer, w);
+                tracer->connectCell(j);
+            }
         }
     }
     if (tracer->getNumConnectedCell() == 0) {
         // tracer has not connect with any cells, so connect with its host cell
 #pragma omp critical
-        meshAdaptor.connectTracer(tracer->getHostCell(), tracer,
-                                  ShapeFunction::getMaxValue());
-        tracer->connectCell(tracer->getHostCell());
+        {
+            meshAdaptor.connectTracer(tracer->getHostCell(), tracer,
+                                      ShapeFunction::getMaxValue());
+            tracer->connectCell(tracer->getHostCell());
+        }
     }
 }
 
@@ -461,25 +465,25 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
             if (tmp2 > disorderDegree) tmp2 = disorderDegree;
             if (disorderDegree > disorderDegreeLimit &&
                 min(cosThetas) < cosThetaBound) {
-                std::ofstream file("disorder_tracers.txt");
-                tracer->dump(timeIdx, *domain, meshAdaptor, file, 0);
-                int idx = 1;
-                for (int i = 0; i < tracers.size(); ++i) {
-                    tracers[i]->dump(timeIdx, *domain, meshAdaptor, file, idx++);
-                }
-                file << "vertices = new((/" << tracers.size() << ",2/), double)" << endl;
-                for (int m = 0; m < domain->getNumDim(); ++m) {
-                    file << "vertices(:," << m << ") = (/";
-                    for (int i = 0; i < tracers.size(); ++i) {
-                        file << tracers[i]->getLongAxisVertexSpaceCoord()(m)/RAD;
-                        if (i != tracers.size()-1) {
-                            file << ",";
-                        } else {
-                            file << "/)" << endl;
-                        }
-                    }
-                }
-                file.close();
+                // std::ofstream file("disorder_tracers.txt");
+                // tracer->dump(timeIdx, *domain, meshAdaptor, file, 0);
+                // int idx = 1;
+                // for (int i = 0; i < tracers.size(); ++i) {
+                //     tracers[i]->dump(timeIdx, *domain, meshAdaptor, file, idx++);
+                // }
+                // file << "vertices = new((/" << tracers.size() << ",2/), double)" << endl;
+                // for (int m = 0; m < domain->getNumDim(); ++m) {
+                //     file << "vertices(:," << m << ") = (/";
+                //     for (int i = 0; i < tracers.size(); ++i) {
+                //         file << tracers[i]->getLongAxisVertexSpaceCoord()(m)/RAD;
+                //         if (i != tracers.size()-1) {
+                //             file << ",";
+                //         } else {
+                //             file << "/)" << endl;
+                //         }
+                //     }
+                // }
+                // file.close();
                 for (int i = 0; i < tracers.size(); ++i) {
                     tracers[i]->actualFilamentLimit = strictFilamentLimit;
                     tracers[i]->actualLateralMixing = strictLateralMixing;

@@ -1,10 +1,18 @@
 cmake_minimum_required (VERSION 2.8)
 
+project (lasm CXX)
+
 option (FLAG_OPENMP "Turn OpenMP compiler flag ON or OFF" OFF)
 option (FLAG_SHARED "Turn building shared libraries ON of OFF" OFF)
 
 if (FLAG_OPENMP)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+    message ("@@ LASM uses OpenMP compiler flag.")
+    find_package (OpenMP)
+    if (OPENMP_FOUND)
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    else ()
+        message (WARNING "CXX compiler does not support OpenMP!")
+    endif ()
 else ()
     message ("@@ LASM does not use OpenMP compiler flag.")
 endif ()
@@ -13,8 +21,6 @@ if (FLAG_SHARED)
 else ()
     set (shared_or_static STATIC)
 endif ()
-
-project (lasm CXX)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-deprecated-register")
 
