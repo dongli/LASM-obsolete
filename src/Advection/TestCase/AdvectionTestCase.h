@@ -16,8 +16,8 @@ protected:
     string restartFileName;
     string subcase;
     VelocityField velocity;
-    ScalarField volumes;
-    vector<ScalarField*> *densities;
+    SingleScalarField volumes;
+    vector<ScalarField*> *density;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();

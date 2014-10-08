@@ -30,7 +30,7 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     mesh = &model.getMesh();
     velocity.create(model.getMesh(), false, HAS_HALF_LEVEL);
     AdvectionTestCase::init(configManager, timeManager);
-    // append output fields
+    // Append output fields.
     io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
         {&model.getGeopotentialDepth(), &model.getSurfaceGeopotential()});
 }
@@ -67,12 +67,17 @@ const Mesh& BarotropicTestCase::getMesh() const  {
 
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     TimeLevelIndex<2> timeIdx;
+    advectionManager.registerTracer("q0", "N/A", "background tracer");
+    advectionManager.registerTracer("q1", "N/A", "geopotential depth");
+    advectionManager.registerTracer("q2", "N/A", "step tracer");
+    density = &advectionManager.density();
+    AdvectionTestCase::registerDefaultOutput();
     // set initial condition for barotropic model
     if (restartFileName == "N/A") {
         if (subcase == "case1") {
             testCase.calcInitCond(model);
         } else if (subcase == "case2") {
-            int fileIdx = io.registerInputFile(model.getMesh(), "erai_input.nc");
+            int fileIdx = io.registerInputFile(model.getMesh(), "ic.barotropic.case2.nc");
             io.file(fileIdx).registerField("double", FULL_DIMENSION,
                 {&model.getZonalWind(), &model.getMeridionalWind(), &model.getGeopotentialDepth()});
             io.open(fileIdx);
@@ -86,38 +91,35 @@ void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
         } else {
             REPORT_ERROR("Unknown subcase \"" << subcase << "\"!");
         }
+        // set initial condition for tracers
+        double *q = new double[3*model.getMesh().getTotalNumGrid(CENTER, 2)];
+        int l = 0;
+        // background tracer
+        for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
+            q[l++] = 1.0;
+        }
+        // geopotential tracer
+        const ScalarField &gd = model.getGeopotentialDepth();
+        for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
+            q[l++] = gd(i);
+        }
+        // step tracer
+        for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
+            const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
+            if (x(0) > 160*RAD && x(0) < 200*RAD &&
+                x(1) > 10*RAD  && x(1) < 40*RAD) {
+                q[l++] = 1;
+            } else {
+                q[l++] = 0.1;
+            }
+        }
+        // propagate initial conditions to advection manager
+        advectionManager.input(timeIdx, q);
+        delete [] q;
     } else {
         model.input(restartFileName);
+        advectionManager.restart(restartFileName);
     }
-    // set initial condition for tracers
-    advectionManager.registerTracer("q0", "N/A", "background tracer");
-    advectionManager.registerTracer("q1", "N/A", "geopotential depth");
-    advectionManager.registerTracer("q2", "N/A", "step tracer");
-    densities = &advectionManager.getDensities();
-    AdvectionTestCase::registerDefaultOutput();
-    double q[3*model.getMesh().getTotalNumGrid(CENTER, 2)];
-    int l = 0;
-    // background tracer
-    for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
-        q[l++] = 1.0;
-    }
-    // geopotential tracer
-    const ScalarField &gd = model.getGeopotentialDepth();
-    for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
-        q[l++] = gd(i);
-    }
-    // step tracer
-    for (int i = 0; i < model.getMesh().getTotalNumGrid(CENTER, 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
-        if (x(0) > 160*RAD && x(0) < 200*RAD &&
-            x(1) > 10*RAD  && x(1) < 40*RAD) {
-            q[l++] = 1;
-        } else {
-            q[l++] = 0.1;
-        }
-    }
-    // propagate initial conditions to advection manager
-    advectionManager.input(timeIdx, q);
 }
     
 void BarotropicTestCase::output(const TimeLevelIndex<2> &timeIdx,
@@ -130,9 +132,7 @@ void BarotropicTestCase::output(const TimeLevelIndex<2> &timeIdx,
 
 void BarotropicTestCase::advance(double time,
                                  const TimeLevelIndex<2> &timeIdx) {
-    if (timeIdx.isCurrentIndex()) {
-        model.integrate(timeIdx, getStepSize());
-    } else {
+    if (!timeIdx.isCurrentIndex()) {
         model.integrate(timeIdx-1, getStepSize());
     }
     int lonGridType, latGridType;

@@ -64,7 +64,7 @@ void CartesianRotationTestCase::calcInitCond(AdvectionManager &advectionManager)
     advectionManager.registerTracer("q0", "N/A", "background tracer");
     advectionManager.registerTracer("q1", "N/A", "cone tracer");
     advectionManager.registerTracer("q2", "N/A", "slotted cyliner tracer");
-    densities = &advectionManager.getDensities();
+    density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
     double q[3*mesh->getTotalNumGrid(CENTER, 2)];
     int l = 0;

@@ -89,16 +89,16 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     TimeLevelIndex<2> timeIdx;
     advectionManager.registerTracer("q0", "N/A", "background tracer");
     advectionManager.registerTracer("q1", "N/A", "cosine hill tracer");
-    densities = &advectionManager.getDensities();
+    density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
     double q[2*mesh->getTotalNumGrid(CENTER, 2)];
     int l = 0;
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
-    calcSolution(0, timeIdx, *(*densities)[1]);
+    calcSolution(0, timeIdx, *(*density)[1]);
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        q[l++] = (*(*densities)[1])(timeIdx, i);
+        q[l++] = (*(*density)[1])(timeIdx, i);
     }
     // propagate initial conditions to advection manager
     advectionManager.input(timeIdx, q);
@@ -107,7 +107,7 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
 void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          AdvectionManager &advectionManager) {
-    calcSolution(dt, timeIdx, *(*densities)[1]);
+    calcSolution(dt, timeIdx, *(*density)[1]);
     advectionManager.remapMeshToTracers(timeIdx);
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }

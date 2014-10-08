@@ -10,6 +10,9 @@ TracerManager::TracerManager() {
 }
 
 TracerManager::~TracerManager() {
+    for (int t = 0; t < tracers.size(); ++t) {
+        delete tracers[t];
+    }
     REPORT_OFFLINE;
 }
 
@@ -17,6 +20,7 @@ TracerManager::~TracerManager() {
 void TracerManager::init(const Domain &domain, const Mesh &mesh,
                          const ConfigManager &configManager) {
     this->domain = &domain;
+    this->mesh = &mesh;
     if (configManager.hasKey("lasm", "scale0")) {
         configManager.getValue("lasm", "scale0", scale0);
     }
@@ -67,9 +71,11 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
 void TracerManager::init(const Domain &domain, const Mesh &mesh,
                          const geomtk::ConfigManager &configManager) {
     this->domain = &domain;
+    this->mesh = &mesh;
     if (configManager.hasKey("lasm", "scale0")) {
         configManager.getValue("lasm", "scale0", scale0);
     }
+    TimeLevelIndex<2> timeIdx;
     int numParcel = 0;
     int numParcelX, numParcelY;
     configManager.getValue("lasm", "num_parcel_x", numParcelX);
@@ -107,7 +113,6 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         tracers[t] = new Tracer(domain.getNumDim());
         tracers[t]->setID(id++);
     }
-    TimeLevelIndex<2> timeIdx;
     for (int t = 0; t < tracers.size(); ++t) {
         Tracer *tracer = tracers[t];
         // set coordinate
@@ -162,26 +167,28 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
             if (l == -1) break;
         }
 #endif
-        x0.transformToCart(domain);
         h(0) = dlon*domain.getRadius()*x0.getCosLat();
         h(1) = dlat*domain.getRadius();
         // When h is small, there may be small spots on the grid densities.
         // The selection of h can be tricky. When h *= 1.5, the errors of solid
         // rotation test is oscillatory with time.
         h *= scale0;
-        // set mesh index
-        MeshIndex &idx0 = tracer->getMeshIndex(timeIdx);
-        idx0.locate(mesh, x0);
-        // TODO: This may be unnecessary.
-        // when tracer is on Pole, transform its coordinate to PS for later use
-        if (idx0.isOnPole()) {
-            x0.transformToPS(domain);
-        }
         // set tracer skeleton
         tracer->getSkeleton().init(domain, mesh, h.max());
         // set deformation matrix
         tracer->getH(timeIdx).eye();
         tracer->updateDeformMatrix(domain, mesh, timeIdx);
+    }
+    // Do the rest initialization jobs.
+    for (int t = 0; t < tracers.size(); ++t) {
+        Tracer *tracer = tracers[t];
+        tracer->getX(timeIdx).transformToCart(domain);
+        tracer->getMeshIndex(timeIdx).locate(mesh, tracer->getX(timeIdx));
+        // TODO: This may be unnecessary.
+        // when tracer is on Pole, transform its coordinate to PS for later use
+        if (tracer->getMeshIndex(timeIdx).isOnPole()) {
+            tracer->getX(timeIdx).transformToPS(domain);
+        }
     }
     REPORT_NOTICE(tracers.size() << " tracers are initialized.");
 }
@@ -213,12 +220,161 @@ const TracerSpeciesInfo& TracerManager::getSpeciesInfo(int speciesIdx) const {
     return *speciesInfos[speciesIdx];
 }
 
+void TracerManager::input(const string &fileName) {
+    TimeLevelIndex<2> timeIdx;
+    int numTracerDimId, numSkel1DimId, numDimDimId, numSpeciesDimId;
+    int idVarId, cVarId, rhoVarId, mVarId, s1VarId;
+    int ncId, ret;
+    size_t numTracer, numDim, numSpecies, numSkel1;
+    int l;
+    int *intData;
+    double *doubleData;
+
+    ret = nc_open(fileName.c_str(), NC_NOWRITE, &ncId);
+    CHECK_NC_OPEN(ret, fileName);
+
+    ret = nc_inq_dimid(ncId, "num_tracer", &numTracerDimId);
+    CHECK_NC_INQ_DIMID(ret, fileName, "num_tracer");
+
+    ret = nc_inq_dimlen(ncId, numTracerDimId, &numTracer);
+    CHECK_NC_INQ_DIMLEN(ret, fileName, "num_tracer");
+
+    ret = nc_inq_dimid(ncId, "num_dim", &numDimDimId);
+    CHECK_NC_INQ_DIMID(ret, fileName, "num_dim");
+
+    ret = nc_inq_dimlen(ncId, numDimDimId, &numDim);
+    CHECK_NC_INQ_DIMLEN(ret, fileName, "num_dim");
+
+    ret = nc_inq_dimid(ncId, "num_species", &numSpeciesDimId);
+    CHECK_NC_INQ_DIMID(ret, fileName, "num_species");
+
+    ret = nc_inq_dimlen(ncId, numSpeciesDimId, &numSpecies);
+    CHECK_NC_INQ_DIMLEN(ret, fileName, "num_species");
+
+    ret = nc_inq_dimid(ncId, "num_skel1", &numSkel1DimId);
+    CHECK_NC_INQ_DIMID(ret, fileName, "num_skel1");
+
+    ret = nc_inq_dimlen(ncId, numSkel1DimId, &numSkel1);
+    CHECK_NC_INQ_DIMLEN(ret, fileName, "num_skel1");
+
+    ret = nc_inq_varid(ncId, "id", &idVarId);
+    CHECK_NC_INQ_VARID(ret, fileName, "id");
+
+    ret = nc_inq_varid(ncId, "c", &cVarId);
+    CHECK_NC_INQ_VARID(ret, fileName, "c");
+
+    ret = nc_inq_varid(ncId, "rho", &rhoVarId);
+    CHECK_NC_INQ_VARID(ret, fileName, "rho");
+
+    ret = nc_inq_varid(ncId, "m", &mVarId);
+    CHECK_NC_INQ_VARID(ret, fileName, "m");
+
+    ret = nc_inq_varid(ncId, "s1", &s1VarId);
+    CHECK_NC_INQ_VARID(ret, fileName, "s1");
+
+    for (int t = 0; t < tracers.size(); ++t) {
+        delete tracers[t];
+    }
+    tracers.resize(numTracer);
+    for (int t = 0; t < numTracer; ++t) {
+        tracers[t] = new Tracer(numDim);
+    }
+
+    intData = new int[numTracer];
+    ret = nc_get_var(ncId, idVarId, intData);
+    CHECK_NC_GET_VAR(ret, fileName, "id");
+    for (int t = 0; t < numTracer; ++t) {
+        tracers[t]->setID(intData[t]);
+    }
+    delete [] intData;
+
+    doubleData = new double[numTracer*numDim];
+    ret = nc_get_var(ncId, cVarId, doubleData);
+    CHECK_NC_GET_VAR(ret, fileName, "c");
+    l = 0;
+    if (numDim == 2) {
+        for (int t = 0; t < numTracer; ++t) {
+            tracers[t]->getX(timeIdx).setCoord(doubleData[l], doubleData[l+1]);
+            l += 2;
+        }
+    } else if (numDim == 3) {
+        for (int t = 0; t < numTracer; ++t) {
+            tracers[t]->getX(timeIdx).setCoord(doubleData[l], doubleData[l+1],
+                                               doubleData[l+2]);
+            l += 3;
+        }
+    }
+    delete [] doubleData;
+
+    assert(getNumSpecies() == numSpecies);
+    doubleData = new double[numTracer*numSpecies];
+    ret = nc_get_var(ncId, rhoVarId, doubleData);
+    CHECK_NC_GET_VAR(ret, fileName, "rho");
+    l = 0;
+    for (int t = 0; t < numTracer; ++t) {
+        for (int s = 0; s < numSpecies; ++s) {
+            tracers[t]->addSpecies();
+        }
+        for (int s = 0; s < numSpecies; ++s) {
+            tracers[t]->density(s) = doubleData[l++];
+        }
+    }
+    ret = nc_get_var(ncId, mVarId, doubleData);
+    CHECK_NC_GET_VAR(ret, fileName, "m");
+    l = 0;
+    for (int t = 0; t < numTracer; ++t) {
+        for (int s = 0; s < numSpecies; ++s) {
+            tracers[t]->mass(s) = doubleData[l++];
+        }
+    }
+    delete [] doubleData;
+
+    if (numDim == 2) {
+        doubleData = new double[numTracer*4*numDim];
+        ret = nc_get_var(ncId, s1VarId, doubleData);
+        CHECK_NC_GET_VAR(ret, fileName, "s1");
+        l = 0;
+        for (int t = 0; t < numTracer; ++t) {
+            TracerSkeleton &s = tracers[t]->getSkeleton();
+            vector<SpaceCoord*> &xs = s.getSpaceCoords(timeIdx);
+            for (int i = 0; i < xs.size(); ++i) {
+                xs[i]->setCoord(doubleData[l], doubleData[l+1]);
+                l += 2;
+            }
+        }
+    } else {
+        REPORT_ERROR("Under construction!");
+    }
+    delete [] doubleData;
+    // Do the rest initialization jobs.
+    for (int t = 0; t < tracers.size(); ++t) {
+        Tracer *tracer = tracers[t];
+        tracer->getX(timeIdx).transformToCart(*domain);
+        tracer->getMeshIndex(timeIdx).locate(*mesh, tracer->getX(timeIdx));
+        // TODO: This may be unnecessary.
+        // when tracer is on Pole, transform its coordinate to PS for later use
+        if (tracer->getMeshIndex(timeIdx).isOnPole()) {
+            tracer->getX(timeIdx).transformToPS(*domain);
+        }
+        TracerSkeleton &s = tracer->getSkeleton();
+        vector<SpaceCoord*> &xs = s.getSpaceCoords(timeIdx);
+        vector<MeshIndex*> &idxs = s.getMeshIdxs(timeIdx);
+        for (int i = 0; i < xs.size(); ++i) {
+            xs[i]->transformToCart(*domain);
+            idxs[i]->locate(*mesh, *xs[i]);
+        }
+        tracer->updateDeformMatrix(*domain, *mesh, timeIdx);
+    }
+
+    ret = nc_close(ncId);
+    CHECK_NC_CLOSE(ret, fileName);
+}
+
 void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
     int numTracerDimId, numSkel1DimId, numDimDimId, numSpeciesDimId;
-    int idVarId, volVarId;
+    int idVarId;
     int cDimIds[2], cVarId;
-    int hDimIds[3], hVarId;
-    int rhoDimIds[2], rhoVarId;
+    int rhoDimIds[2], rhoVarId, mVarId;
     int sDimIds[3], s1VarId;
 #define OUTPUT_TRACER_SHAPE
 #ifdef OUTPUT_TRACER_SHAPE
@@ -260,28 +416,21 @@ void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
     sprintf(str, "tracer identifier");
     nc_put_att(ncId, idVarId, "long_name", NC_CHAR, strlen(str), str);
 
-    nc_def_var(ncId, "vp", NC_DOUBLE, 1, &numTracerDimId, &volVarId);
-    sprintf(str, "parcel volumes");
-    nc_put_att(ncId, volVarId, "long_name", NC_CHAR, strlen(str), str);
-
     cDimIds[0] = numTracerDimId;
     cDimIds[1] = numDimDimId;
     nc_def_var(ncId, "c", NC_DOUBLE, 2, cDimIds, &cVarId);
     sprintf(str, "tracer centroid coordinates on %s", domain->getBrief().c_str());
     nc_put_att(ncId, cVarId, "long_name", NC_CHAR, strlen(str), str);
-
-    hDimIds[0] = numTracerDimId;
-    hDimIds[1] = numDimDimId;
-    hDimIds[2] = numDimDimId;
-    nc_def_var(ncId, "h", NC_DOUBLE, 3, hDimIds, &hVarId);
-    sprintf(str, "tracer deformation matrix");
-    nc_put_att(ncId, hVarId, "long_name", NC_CHAR, strlen(str), str);
     
     rhoDimIds[0] = numTracerDimId;
     rhoDimIds[1] = numSpeciesDimId;
     nc_def_var(ncId, "rho", NC_DOUBLE, 2, rhoDimIds, &rhoVarId);
     sprintf(str, "tracer species denisty");
     nc_put_att(ncId, rhoVarId, "long_name", NC_CHAR, strlen(str), str);
+
+    nc_def_var(ncId, "m", NC_DOUBLE, 2, rhoDimIds, &mVarId);
+    sprintf(str, "tracer species mass");
+    nc_put_att(ncId, mVarId, "long_name", NC_CHAR, strlen(str), str);
 
     if (domain->getNumDim() == 2) {
         sDimIds[0] = numTracerDimId;
@@ -307,14 +456,6 @@ void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
     }
     nc_put_var(ncId, idVarId, intData);
     delete [] intData;
-
-    doubleData = new double[tracers.size()];
-    l = 0;
-    for (int t = 0; t < tracers.size(); ++t) {
-        doubleData[l++] = tracers[t]->getDetH(timeIdx);
-    }
-    nc_put_var(ncId, volVarId, doubleData);
-    delete [] doubleData;
     
     doubleData = new double[tracers.size()*domain->getNumDim()];
     l = 0;
@@ -325,27 +466,22 @@ void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
     }
     nc_put_var(ncId, cVarId, doubleData);
     delete [] doubleData;
-
-    doubleData = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
-    l = 0;
-    for (int t = 0; t < tracers.size(); ++t) {
-        for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
-            for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                doubleData[l++] = tracers[t]->getH(timeIdx)(m1, m2);
-            }
-        }
-    }
-    nc_put_var(ncId, hVarId, doubleData);
-    delete [] doubleData;
     
     doubleData = new double[tracers.size()*getNumSpecies()];
     l = 0;
     for (int t = 0; t < tracers.size(); ++t) {
         for (int s = 0; s < getNumSpecies(); ++s) {
-            doubleData[l++] = tracers[t]->getDensity(s);
+            doubleData[l++] = tracers[t]->density(s);
         }
     }
     nc_put_var(ncId, rhoVarId, doubleData);
+    l = 0;
+    for (int t = 0; t < tracers.size(); ++t) {
+        for (int s = 0; s < getNumSpecies(); ++s) {
+            doubleData[l++] = tracers[t]->mass(s);
+        }
+    }
+    nc_put_var(ncId, mVarId, doubleData);
     delete [] doubleData;
 
     if (domain->getNumDim() == 2) {
@@ -382,6 +518,8 @@ void TracerManager::output(const TimeLevelIndex<2> &timeIdx, int ncId) {
         nc_put_var(ncId, s2VarId, doubleData);
         delete [] doubleData;
 #endif
+    } else {
+        REPORT_ERROR("Under construction!");
     }
 }
 

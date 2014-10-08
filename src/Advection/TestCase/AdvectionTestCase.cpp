@@ -5,7 +5,7 @@ namespace lasm {
 AdvectionTestCase::AdvectionTestCase() {
     domain = NULL;
     mesh = NULL;
-    densities = NULL;
+    density = NULL;
     restartFileName = "N/A";
 }
 
@@ -40,7 +40,7 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
         outputFileIdx = io.registerOutputFile(*mesh, pattern,
                                               TimeStepUnit::DAY, freq);
     } else {
-        REPORT_ERROR("Under construction!");
+        REPORT_ERROR("Unknown output frequency unit \"" << unit << "\"!");
     }
     volumes.create("vol", "m2", "grid cell volume", *mesh, CENTER, 2);
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
@@ -53,9 +53,9 @@ void AdvectionTestCase::registerDefaultOutput() {
                                          {&velocity(0), &velocity(1),
                                           &velocity.getDivergence(),
                                           &volumes});
-    for (int s = 0; s < densities->size(); ++s) {
+    for (int s = 0; s < density->size(); ++s) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
-                                             {(*densities)[s]});
+                                             {(*density)[s]});
     }
 }
 
@@ -63,9 +63,10 @@ void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
     io.output<double, 2>(outputFileIdx, timeIdx,
                          {&velocity(0), &velocity(1),
-                          &velocity.getDivergence(), &volumes});
-    for (int s = 0; s < densities->size(); ++s) {
-        io.output<double, 2>(outputFileIdx, timeIdx, {(*densities)[s]});
+                          &velocity.getDivergence()});
+    io.output<double>(outputFileIdx, {&volumes});
+    for (int s = 0; s < density->size(); ++s) {
+        io.output<double, 2>(outputFileIdx, timeIdx, {(*density)[s]});
     }
 }
 

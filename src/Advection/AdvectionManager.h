@@ -27,7 +27,6 @@ protected:
     double shrinkFactor;        //>! control the mixed parcel shrinking degree
     double disorderDegreeLimit;
     bool isMassFixed;           //>! control whether use mass fixer
-    string restartFileName;
     TimeLevels<vector<double>, 2> totalMass;
     /**
      *  Neighbor cell searching variables
@@ -46,23 +45,10 @@ public:
     AdvectionManager();
     ~AdvectionManager();
 
-    /**
-     *  Initialize advection manager.
-     *
-     *  @param domain        the spatial domain.
-     *  @param mesh          the mesh.
-     *  @param configManager the configuration manager.
-     *  @param timeManager   the time manager.
-     */
     void init(const Domain &domain, const Mesh &mesh,
               const ConfigManager &configManager);
 
-    /**
-     *  Return the meshed tracer density array.
-     *
-     *  @return The meshed tracer density array.
-     */
-    vector<ScalarField*>& getDensities() { return meshAdaptor.getDensities(); }
+    vector<ScalarField*>& density() { return meshAdaptor.density(); }
 
     /**
      *  Register a tracer species.
@@ -82,7 +68,7 @@ public:
      */
     void input(const TimeLevelIndex<2> &timeIdx, double *q);
 
-    void restart(const TimeLevelIndex<2> &timeIdx);
+    void restart(const string &fileName);
 
     /**
      *  Output tracers on old time level into netCDF file.

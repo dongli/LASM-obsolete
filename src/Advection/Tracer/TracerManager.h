@@ -14,6 +14,7 @@ class TracerManager {
     friend class AdvectionManager;
 protected:
     const Domain *domain;
+    const Mesh *mesh;
     vector<Tracer*> tracers;
     vector<TracerSpeciesInfo*> speciesInfos;
     double scale0; //>! initial parcel size scale (relative to grid cell)
@@ -53,7 +54,14 @@ public:
     const TracerSpeciesInfo& getSpeciesInfo(int speciesIdx) const;
 
     /**
-     *  Output tracers on old time level into netCDF file.
+     *  Input tracers on the old time level from a netCDF file.
+     *
+     *  @param fileName the input netCDF file name.
+     */
+    void input(const string &fileName);
+
+    /**
+     *  Output tracers on the old time level into a netCDF file.
      *
      *  @param timeIdx  the time level index.
      *  @param ncId     the output netCDF file ID.

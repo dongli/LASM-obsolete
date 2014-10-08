@@ -21,7 +21,7 @@ void DeformationTestCase::init(const ConfigManager &configManager,
     // initialize domain
     domain = new geomtk::SphereDomain(2);
     domain->setRadius(1);
-    // initialize mesh
+    // Initialize mesh.
     mesh = new geomtk::RLLMesh(*domain);
     int numLon = 240, numLat = 121;
     if (configManager.hasKey("test_case", "num_lon")) {
@@ -31,9 +31,8 @@ void DeformationTestCase::init(const ConfigManager &configManager,
         configManager.getValue("test_case", "num_lat", numLat);
     }
     mesh->init(numLon, numLat);
-    // initialize velocity
+    // Initialize velocity.
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
-
     AdvectionTestCase::init(configManager, timeManager);
 }
 
@@ -120,7 +119,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q2", "N/A", "q1 correlated tracer");
     advectionManager.registerTracer("q3", "N/A", "slotted cylinders tracer");
     advectionManager.registerTracer("q4", "N/A", "Gaussian hills tracer");
-    densities = &advectionManager.getDensities();
+    density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
     SpaceCoord c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
@@ -180,6 +179,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     // propagate initial conditions to advection manager
     TimeLevelIndex<2> timeIdx;
     advectionManager.input(timeIdx, q);
+    delete [] q;
 }
 
 } // lasm

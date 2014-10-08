@@ -40,7 +40,7 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
                      testCase->getStepSize());
     advectionManager.init(testCase->getDomain(), testCase->getMesh(), configManager);
-    
+
     testCase->calcInitCond(advectionManager);
     testCase->advance(timeManager.getSeconds(), oldTimeIdx);
     testCase->output(oldTimeIdx, advectionManager);

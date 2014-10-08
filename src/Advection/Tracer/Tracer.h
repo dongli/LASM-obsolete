@@ -22,8 +22,8 @@ public:
     double actualFilamentLimit;
     double actualLateralMixing;
 protected:
-    vec density;        //>! species density array
-    vec mass;           //>! species mass array
+    vec _density;  //>! species density array
+    vec _mass;     //>! species mass array
     TracerSkeleton *skeleton;
     TracerType type;
     BodyCoord *vy;  //>! long axis vertex body coordinate
@@ -43,10 +43,10 @@ public:
      *  Add a species.
      */
     void addSpecies() {
-        density.resize(density.size()+1);
-        density[density.size()-1] = 0;
-        mass.resize(mass.size()+1);
-        mass[mass.size()-1] = 0;
+        _density.resize(_density.size()+1);
+        _density[_density.size()-1] = 0;
+        _mass.resize(_mass.size()+1);
+        _mass[_mass.size()-1] = 0;
     }
 
     /**
@@ -56,12 +56,12 @@ public:
      *  @param s       the species index.
      */
     void calcDensity(const TimeLevelIndex<2> &timeIdx, int s) {
-        density[s] = mass[s]/detH.getLevel(timeIdx);
+        _density[s] = _mass[s]/detH.getLevel(timeIdx);
     }
 
-    double& getDensity(int s) { return density[s]; }
+    double& density(int s) { return _density[s]; }
 
-    double getDensity(int s) const { return density[s]; }
+    double density(int s) const { return _density[s]; }
 
     /**
      *  Calculate species mass from density.
@@ -70,16 +70,16 @@ public:
      *  @param s       the species index.
      */
     void calcMass(const TimeLevelIndex<2> &timeIdx, int s) {
-        mass[s] = density[s]*detH.getLevel(timeIdx);
+        _mass[s] = _density[s]*detH.getLevel(timeIdx);
     }
 
-    double& getMass(int s) { return mass[s]; }
+    double& mass(int s) { return _mass[s]; }
 
-    double getMass(int s) const { return mass[s]; }
+    double mass(int s) const { return _mass[s]; }
 
     void resetSpecies() {
-        density.zeros();
-        mass.zeros();
+        _density.zeros();
+        _mass.zeros();
     }
 
     Tracer& operator=(const Tracer &other);

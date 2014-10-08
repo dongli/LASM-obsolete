@@ -1,5 +1,6 @@
 #include "MeshAdaptor.h"
 #include "Tracer.h"
+#include "TracerManager.h"
 
 namespace lasm {
     
@@ -11,9 +12,9 @@ MeshAdaptor::MeshAdaptor() {
     
 MeshAdaptor::~MeshAdaptor() {
     if (mesh != NULL) {
-        for (int i = 0; i < densities.size(); ++i) {
-            delete densities[i];
-            delete masses[i];
+        for (int i = 0; i < _density.size(); ++i) {
+            delete _density[i];
+            delete _mass[i];
         }
     }
     REPORT_OFFLINE;
@@ -22,50 +23,69 @@ MeshAdaptor::~MeshAdaptor() {
 void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
     this->domain = &domain;
     this->mesh = &mesh;
-    volumes.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    numConnectedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    connectedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    remapWeights.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    numContainedTracer.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    containedTracers.resize(mesh.getTotalNumGrid(CENTER, domain.getNumDim()));
-    for (int i = 0; i < mesh.getTotalNumGrid(CENTER, domain.getNumDim()); ++i) {
-        volumes[i] = mesh.getCellVolume(i);
+    _numConnectedTracer.resize(mesh.getTotalNumGrid(CENTER));
+    _connectedTracers.resize(mesh.getTotalNumGrid(CENTER));
+    _remapWeights.resize(mesh.getTotalNumGrid(CENTER));
+    _numContainedTracer.resize(mesh.getTotalNumGrid(CENTER));
+    _containedTracers.resize(mesh.getTotalNumGrid(CENTER));
+}
+
+void MeshAdaptor::input(const string &fileName,
+                        const TracerManager &tracerManager) {
+    TimeLevelIndex<2> timeIdx;
+    int ncId, ret;
+    double *data = new double[mesh->getTotalNumGrid(CENTER)];
+    ret = nc_open(fileName.c_str(), NC_NOWRITE, &ncId);
+    CHECK_NC_OPEN(ret, fileName);
+    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+        int varId;
+        const string &varName = tracerManager.getSpeciesInfo(s).getName();
+        ret = nc_inq_varid(ncId, varName.c_str(), &varId);
+        CHECK_NC_INQ_VARID(ret, fileName, varName);
+        ret = nc_get_var(ncId, varId, data);
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+            (*_density[s])(timeIdx, i) = data[i];
+            (*_mass[s])(timeIdx, i) = data[i]*mesh->getCellVolume(i);
+        }
     }
+    delete [] data;
+    ret = nc_close(ncId);
+    CHECK_NC_CLOSE(ret, fileName);
 }
 
 void MeshAdaptor::registerTracer(const string &name, const string &units,
                                  const string &brief) {
-    densities.push_back(new ScalarField);
-    densities.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
-    masses.push_back(new ScalarField);
-    masses.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
+    _density.push_back(new ScalarField);
+    _density.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
+    _mass.push_back(new ScalarField);
+    _mass.back()->create(name, units, brief, *mesh, CENTER, domain->getNumDim());
 }
 
 void MeshAdaptor::resetSpecies(const TimeLevelIndex<2> &timeIdx) {
-    for (int s = 0; s < densities.size(); ++s) {
+    for (int s = 0; s < _density.size(); ++s) {
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
-            (*densities[s])(timeIdx, i) = 0;
-            (*masses[s])(timeIdx, i) = 0;
+            (*_density[s])(timeIdx, i) = 0;
+            (*_mass[s])(timeIdx, i) = 0;
         }
     }
 }
     
 void MeshAdaptor::resetContainedTracers() {
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
-        numContainedTracer[i] = 0;
+        _numContainedTracer[i] = 0;
     }
 }
 
 void MeshAdaptor::resetConnectedTracers() {
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER, domain->getNumDim()); ++i) {
-        numConnectedTracer[i] = 0;
+        _numConnectedTracer[i] = 0;
     }
 }
     
-double MeshAdaptor::getRemapWeight(int i, Tracer *tracer) const {
-    for (int j = 0; j < numConnectedTracer[i]; ++j) {
-        if (connectedTracers[i][j] == tracer) {
-            return remapWeights[i][j];
+double MeshAdaptor::remapWeight(int i, Tracer *tracer) const {
+    for (int j = 0; j < _numConnectedTracer[i]; ++j) {
+        if (_connectedTracers[i][j] == tracer) {
+            return _remapWeights[i][j];
         }
     }
     REPORT_ERROR("Tracer is not connected!");
@@ -73,20 +93,20 @@ double MeshAdaptor::getRemapWeight(int i, Tracer *tracer) const {
 
 void MeshAdaptor::containTracer(int i, Tracer *tracer) {
 #ifndef NDEBUG
-    for (int j = 0; j < numContainedTracer[i]; ++j) {
-        if (containedTracers[i][j] == tracer) {
+    for (int j = 0; j < _numContainedTracer[i]; ++j) {
+        if (_containedTracers[i][j] == tracer) {
             REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
                          ") has already been contained!");
         }
     }
 #endif
-    if (numContainedTracer[i] == containedTracers[i].size()) {
-        containedTracers[i].push_back(tracer);
+    if (_numContainedTracer[i] == _containedTracers[i].size()) {
+        _containedTracers[i].push_back(tracer);
     } else {
-        containedTracers[i][numContainedTracer[i]] = tracer;
+        _containedTracers[i][_numContainedTracer[i]] = tracer;
     }
     tracer->setHostCell(i);
-    numContainedTracer[i]++;
+    _numContainedTracer[i]++;
 }
     
 void MeshAdaptor::connectTracer(int i, Tracer *tracer, double weight) {
@@ -96,19 +116,19 @@ void MeshAdaptor::connectTracer(int i, Tracer *tracer, double weight) {
                      ") has already been connected!");
     }
 #endif
-    if (numConnectedTracer[i] == connectedTracers[i].size()) {
-        connectedTracers[i].push_back(tracer);
-        remapWeights[i].push_back(weight);
+    if (_numConnectedTracer[i] == _connectedTracers[i].size()) {
+        _connectedTracers[i].push_back(tracer);
+        _remapWeights[i].push_back(weight);
     } else {
-        connectedTracers[i][numConnectedTracer[i]] = tracer;
-        remapWeights[i][numConnectedTracer[i]] = weight;
+        _connectedTracers[i][_numConnectedTracer[i]] = tracer;
+        _remapWeights[i][_numConnectedTracer[i]] = weight;
     }
-    numConnectedTracer[i]++;
+    _numConnectedTracer[i]++;
 }
     
 bool MeshAdaptor::isTracerConnected(int i, Tracer *tracer) {
-    for (int j = 0; j < numConnectedTracer[i]; ++j) {
-        if (connectedTracers[i][j] == tracer) {
+    for (int j = 0; j < _numConnectedTracer[i]; ++j) {
+        if (_connectedTracers[i][j] == tracer) {
             return true;
         }
     }

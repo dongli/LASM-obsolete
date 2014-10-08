@@ -20,8 +20,9 @@ Tracer::~Tracer() {
 Tracer& Tracer::operator=(const Tracer &other) {
     Parcel::operator=(other);
     if (this != &other) {
-        for (int s = 0; s < density.size(); ++s) {
-            density[s] = other.density[s];
+        for (int s = 0; s < _density.size(); ++s) {
+            _density[s] = other._density[s];
+            _mass[s] = other._mass[s];
         }
         *skeleton = *(other.skeleton);
         // TODO: Handle connected cells.
@@ -72,15 +73,15 @@ void Tracer::updateDeformMatrix(const Domain &domain,
 #endif
         // reset the determinant of H to parcel volume
         // NOTE: Parcel volume is represented by the first tracer.
-        if (density.size() != 0) {
+        if (_density.size() != 0) {
             int s;
-            for (s = 0; s < mass.size(); ++s) {
-                if (mass[s] != 0) {
+            for (s = 0; s < _mass.size(); ++s) {
+                if (_mass[s] != 0) {
                     break;
                 }
             }
-            if (s != mass.size()) {
-                double volume = mass[s]/density[s];
+            if (s != _mass.size()) {
+                double volume = _mass[s]/_density[s];
                 double tmp = sqrt(volume/(S[0]*S[1]));
                 S[0] *= tmp; S[1] *= tmp;
                 H0 = U*diagmat(S)*V.t();
@@ -168,7 +169,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         for (int m = 0; m < 2; ++m) {
             file << "ngb_cells" << idx << "(:," << m << ") = (/";
             for (int i = 0; i < numConnectedCell; ++i) {
-                file << meshAdaptor.getCoord(connectedCellIdxs[i])(m)/RAD;
+                file << meshAdaptor.coord(connectedCellIdxs[i])(m)/RAD;
                 if (i != numConnectedCell-1) {
                     file << ",";
                 } else {
@@ -181,7 +182,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
     int numNeighborTracer = 0;
     for (int i = 0; i < numConnectedCell; ++i) {
         int j = connectedCellIdxs[i];
-        numNeighborTracer += meshAdaptor.getNumContainedTracer(j);
+        numNeighborTracer += meshAdaptor.numContainedTracer(j);
     }
     if (numNeighborTracer != 0) {
         file << "ngb_tracers" << idx << " = new((/" << numNeighborTracer << ",2/), double)" << endl;
@@ -189,8 +190,8 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
             file << "ngb_tracers" << idx << "(:," << m << ") = (/";
             int k = 0;
             for (int i = 0; i < numConnectedCell; ++i) {
-                const vector<Tracer*> &tracers = meshAdaptor.getContainedTracers(connectedCellIdxs[i]);
-                for (int j = 0; j < meshAdaptor.getNumContainedTracer(connectedCellIdxs[i]); ++j) {
+                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(connectedCellIdxs[i]);
+                for (int j = 0; j < meshAdaptor.numContainedTracer(connectedCellIdxs[i]); ++j) {
                     file << tracers[j]->getX(timeIdx)(m)/RAD;
                     if (k != numNeighborTracer-1) {
                         file << ",";
@@ -254,7 +255,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
             file << "ngb_cells(:," << m << ") = (/";
             for (int i = 0; i < numConnectedCell; ++i) {
                 int j = connectedCellIdxs[i];
-                file << meshAdaptor.getCoord(j)(m)/RAD;
+                file << meshAdaptor.coord(j)(m)/RAD;
                 if (i != numConnectedCell-1) {
                     file << ",";
                 } else {
@@ -267,7 +268,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
     int numNeighborTracer = 0;
     for (int i = 0; i < numConnectedCell; ++i) {
         int j = connectedCellIdxs[i];
-        numNeighborTracer += meshAdaptor.getNumContainedTracer(j);
+        numNeighborTracer += meshAdaptor.numContainedTracer(j);
     }
     if (numNeighborTracer != 0) {
         file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
@@ -275,8 +276,8 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
             file << "ngb_tracers(:," << m << ") = (/";
             int k = 0;
             for (int i = 0; i < numConnectedCell; ++i) {
-                const vector<Tracer*> &tracers = meshAdaptor.getContainedTracers(connectedCellIdxs[i]);
-                for (int j = 0; j < meshAdaptor.getNumContainedTracer(connectedCellIdxs[i]); ++j) {
+                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(connectedCellIdxs[i]);
+                for (int j = 0; j < meshAdaptor.numContainedTracer(connectedCellIdxs[i]); ++j) {
                     file << tracers[j]->getX(timeIdx)(m)/RAD;
                     if (k != numNeighborTracer-1) {
                         file << ",";
