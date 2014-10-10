@@ -277,7 +277,7 @@ void AdvectionManager::integrate_RK4(double dt,
         idx1.locate(*mesh, x1);
         // stage 3
         regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
-        regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
+        regrid->run(BILINEAR, halfTimeIdx, divergence, x1, div, &idx1);
         for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
             k3_rho[s] = -rho[s]*div;
             rho[s] = tracer->density(s)+dt*k3_rho[s];
