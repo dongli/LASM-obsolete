@@ -31,9 +31,12 @@ void DeformationTestCase::init(const ConfigManager &configManager,
         configManager.getValue("test_case", "num_lat", numLat);
     }
     mesh->init(numLon, numLat);
-    // Initialize velocity.
-    velocity.create(*mesh, true, HAS_HALF_LEVEL);
+    // Call super class initialization.
     AdvectionTestCase::init(configManager, timeManager);
+    // Initialize velocity.
+    if (!useAnalyticalVelocity) {
+        velocity.create(*mesh, true, HAS_HALF_LEVEL);
+    }
 }
 
 Time DeformationTestCase::getStartTime() const {
@@ -52,6 +55,7 @@ double DeformationTestCase::getStepSize() const {
 
 void DeformationTestCase::advance(double time,
                                   const TimeLevelIndex<2> &timeIdx) {
+    if (useAnalyticalVelocity) return;
     double cosT = cos(M_PI*time/period);
     double k, R = domain->getRadius();
     // advance velocity
@@ -180,6 +184,36 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     TimeLevelIndex<2> timeIdx;
     advectionManager.input(timeIdx, q);
     delete [] q;
+}
+
+void DeformationTestCase::evalVelocity(double dt, const SpaceCoord &x,
+                                       bool isMoveOnPole, Velocity &v) const {
+    double time = timeManager->getSeconds()+dt;
+    double cosT = cos(M_PI*time/period);
+    double k, R = domain->getRadius();
+    if (subcase == "case4") {
+        k = 10.0*R/period;
+        double c1 = PI2*time/period;
+        double c2 = PI2*R/period;
+        double lon = x(0)-c1, lat = x(1);
+        v(0) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
+        v(1) = k*sin(lon*2.0)*cos(lat)*cosT;
+        if (isMoveOnPole) {
+            v.transformToPS(x);
+        }
+    } else {
+        REPORT_ERROR("Under construction!");
+    }
+}
+
+void DeformationTestCase::evalDivergence(double dt, const SpaceCoord &x,
+                                         double &div) const {
+    double time = timeManager->getSeconds()+dt;
+    if (subcase == "case4") {
+        div = 0.0;
+    } else {
+        REPORT_ERROR("Under construction!");
+    }
 }
 
 } // lasm

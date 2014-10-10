@@ -49,8 +49,13 @@ int main(int argc, const char *argv[])
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
         double time = timeManager.getSeconds()+timeManager.getStepSize();
         testCase->advance(time, newTimeIdx);
-        advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
-                                 testCase->getVelocityField());
+        if (!testCase->isUseAnalyticalVelocity()) {
+            advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
+                                     testCase->getVelocityField());
+        } else {
+            advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
+                                     *testCase);
+        }
         if (isTrueSolution) {
             testCase->calcSolution(timeManager.getStepSize(),
                                    newTimeIdx, advectionManager);

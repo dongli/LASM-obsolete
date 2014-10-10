@@ -22,6 +22,12 @@ public:
     virtual void calcInitCond(AdvectionManager &advectionManager);
 
     virtual void advance(double time, const TimeLevelIndex<2> &timeIdx);
+
+    virtual void evalVelocity(double dt, const SpaceCoord &x,
+                              bool isMoveOnPole, Velocity &v) const;
+
+    virtual void evalDivergence(double dt, const SpaceCoord &x,
+                                double &div) const;
 };
 
 }

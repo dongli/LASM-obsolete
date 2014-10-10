@@ -1,6 +1,7 @@
 #include "AdvectionManager.h"
 #include "ShapeFunction.h"
 #include "TracerSkeleton.h"
+#include "AdvectionTestCase.h"
 
 namespace lasm {
 
@@ -192,6 +193,16 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     REPORT_NOTICE("mixTracers uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 }
 
+void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
+                               const AdvectionTestCase &testCase) {
+    integrate_RK4(dt, newTimeIdx, testCase);
+    embedTracersIntoMesh(newTimeIdx);
+    connectTracersAndMesh(newTimeIdx);
+    remapTracersToMesh(newTimeIdx);
+//    checkTracerShapes(newTimeIdx);
+//    mixTracers(newTimeIdx);
+}
+
 // -----------------------------------------------------------------------------
 // private member functions
 
@@ -329,6 +340,124 @@ void AdvectionManager::integrate_RK4(double dt,
             idx1s[i]->locate(*mesh, *x1s[i]);
             // stage 4
             regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
+            v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+            mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+#ifdef USE_SPHERE_DOMAIN
+            x1s[i]->transformToCart(*domain);
+#endif
+        }
+        tracer->updateDeformMatrix(*domain, *mesh, newTimeIdx);
+    }
+}
+
+void AdvectionManager::integrate_RK4(double dt,
+                                     const TimeLevelIndex<2> &newTimeIdx,
+                                     const AdvectionTestCase &testCase) {
+    TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
+    double dt05 = 0.5*dt;
+    for (int t = 0; t < tracerManager.tracers.size(); ++t) {
+        Tracer *tracer = tracerManager.tracers[t];
+        Velocity v1(domain->getNumDim());
+        Velocity v2(domain->getNumDim());
+        Velocity v3(domain->getNumDim());
+        Velocity v4(domain->getNumDim());
+        Velocity v(domain->getNumDim());
+        double div;
+        vec rho(tracerManager.tracers.size());
+        double k1_rho[tracerManager.getNumSpecies()];
+        double k2_rho[tracerManager.getNumSpecies()];
+        double k3_rho[tracerManager.getNumSpecies()];
+        double k4_rho[tracerManager.getNumSpecies()];
+        // Update the centroid and deformation matrix of the tracer.
+        SpaceCoord &x0 = tracer->getX(oldTimeIdx);
+        SpaceCoord &x1 = tracer->getX(newTimeIdx);
+        MeshIndex &idx0 = tracer->getMeshIndex(oldTimeIdx);
+        MeshIndex &idx1 = tracer->getMeshIndex(newTimeIdx);
+#ifdef USE_RLL_MESH
+        // TODO: Should we hide the following codes? Because they are
+        //       related to sphere domain and RLL mesh.
+        if (idx0.isOnPole()) {
+            idx0.setMoveOnPole(true);
+            idx1.setMoveOnPole(true);
+            x0.transformToPS(*domain);
+        } else {
+            idx0.setMoveOnPole(false);
+            idx1.setMoveOnPole(false);
+        }
+#endif
+        // stage 1
+        testCase.evalVelocity(0, x0, idx0.isMoveOnPole(), v1);
+        testCase.evalDivergence(0, x0, div);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k1_rho[s] = -tracer->density(s)*div;
+            rho[s] = tracer->density(s)+dt05*k1_rho[s];
+        }
+        mesh->move(x0, dt05, v1, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // stage 2
+        testCase.evalVelocity(dt05, x1, idx0.isMoveOnPole(), v2);
+        testCase.evalDivergence(dt05, x1, div);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k2_rho[s] = -rho[s]*div;
+            rho[s] = tracer->density(s)+dt05*k2_rho[s];
+        }
+        mesh->move(x0, dt05, v2, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // stage 3
+        testCase.evalVelocity(dt05, x1, idx0.isMoveOnPole(), v3);
+        testCase.evalDivergence(dt05, x1, div);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k3_rho[s] = -rho[s]*div;
+            rho[s] = tracer->density(s)+dt*k3_rho[s];
+        }
+        mesh->move(x0, dt, v3, idx0, x1);
+        idx1.locate(*mesh, x1);
+        // stage 4
+        testCase.evalVelocity(dt, x1, idx0.isMoveOnPole(), v4);
+        testCase.evalDivergence(dt, x1, div);
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            k4_rho[s] = -rho[s]*div;
+            tracer->density(s) += dt*
+            (k1_rho[s]+2.0*k2_rho[s]+2.0*k3_rho[s]+k4_rho[s])/6.0;
+        }
+        v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+        mesh->move(x0, dt, v, idx0, x1);
+        idx1.locate(*mesh, x1);
+#ifdef USE_SPHERE_DOMAIN
+        x1.transformToCart(*domain);
+#endif
+        // Update the skeleton points of the tracer.
+        TracerSkeleton &s = tracer->getSkeleton();
+        vector<SpaceCoord*> &x0s = s.getSpaceCoords(oldTimeIdx);
+        vector<SpaceCoord*> &x1s = s.getSpaceCoords(newTimeIdx);
+        vector<MeshIndex*> &idx0s = s.getMeshIdxs(oldTimeIdx);
+        vector<MeshIndex*> &idx1s = s.getMeshIdxs(newTimeIdx);
+        for (int i = 0; i < x0s.size(); ++i) {
+#ifdef USE_RLL_MESH
+            if (idx0s[i]->isOnPole()) {
+                idx0s[i]->setMoveOnPole(true);
+                idx1s[i]->setMoveOnPole(true);
+                x0s[i]->transformToPS(*domain);
+            } else {
+                idx0s[i]->setMoveOnPole(false);
+                idx1s[i]->setMoveOnPole(false);
+            }
+#endif
+            // stage 1
+            testCase.evalVelocity(0, *x0s[i], idx0s[i]->isMoveOnPole(), v1);
+            mesh->move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // stage 2
+            testCase.evalVelocity(dt05, *x1s[i], idx0s[i]->isMoveOnPole(), v2);
+            mesh->move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // stage 3
+            testCase.evalVelocity(dt05, *x1s[i], idx0s[i]->isMoveOnPole(), v3);
+            mesh->move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
+            idx1s[i]->locate(*mesh, *x1s[i]);
+            // stage 4
+            testCase.evalVelocity(dt, *x1s[i], idx0s[i]->isMoveOnPole(), v4);
             v = (v1+v2*2.0+v3*2.0+v4)/6.0;
             mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(*mesh, *x1s[i]);

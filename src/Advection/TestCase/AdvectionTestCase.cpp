@@ -7,6 +7,7 @@ AdvectionTestCase::AdvectionTestCase() {
     mesh = NULL;
     density = NULL;
     restartFileName = "N/A";
+    useAnalyticalVelocity = false;
 }
 
 AdvectionTestCase::~AdvectionTestCase() {
@@ -26,6 +27,9 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
     }
     if (configManager.hasKey("test_case", "subcase")) {
         configManager.getValue("test_case", "subcase", subcase);
+    }
+    if (configManager.hasKey("test_case", "use_analytical_velocity")) {
+        configManager.getValue("test_case", "use_analytical_velocity", useAnalyticalVelocity);
     }
     if (unit == "steps") {
         outputFileIdx = io.registerOutputFile(*mesh, pattern,
@@ -49,10 +53,12 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
 }
 
 void AdvectionTestCase::registerDefaultOutput() {
-    io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
-                                         {&velocity(0), &velocity(1),
-                                          &velocity.getDivergence(),
-                                          &volumes});
+    if (!useAnalyticalVelocity) {
+        io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
+                                             {&velocity(0), &velocity(1),
+                                              &velocity.getDivergence()});
+    }
+    io.file(outputFileIdx).registerField("double", FULL_DIMENSION, {&volumes});
     for (int s = 0; s < density->size(); ++s) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                              {(*density)[s]});
@@ -61,9 +67,11 @@ void AdvectionTestCase::registerDefaultOutput() {
 
 void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     io.create(outputFileIdx);
-    io.output<double, 2>(outputFileIdx, timeIdx,
-                         {&velocity(0), &velocity(1),
-                          &velocity.getDivergence()});
+    if (!useAnalyticalVelocity) {
+        io.output<double, 2>(outputFileIdx, timeIdx,
+                             {&velocity(0), &velocity(1),
+                              &velocity.getDivergence()});
+    }
     io.output<double>(outputFileIdx, {&volumes});
     for (int s = 0; s < density->size(); ++s) {
         io.output<double, 2>(outputFileIdx, timeIdx, {(*density)[s]});
@@ -94,6 +102,16 @@ void AdvectionTestCase::calcSolution(double dt,
 void AdvectionTestCase::calcSolution(double dt,
                                      const TimeLevelIndex<2> &timeIdx,
                                      ScalarField &q) {
+    REPORT_ERROR("calcSolution is not available!");
+}
+
+void AdvectionTestCase::evalVelocity(double dt, const SpaceCoord &x,
+                                     bool isMoveOnPole, Velocity &v) const {
+    REPORT_ERROR("calcSolution is not available!");
+}
+
+void AdvectionTestCase::evalDivergence(double dt, const SpaceCoord &x,
+                                       double &div) const {
     REPORT_ERROR("calcSolution is not available!");
 }
 

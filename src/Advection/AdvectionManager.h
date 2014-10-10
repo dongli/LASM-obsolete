@@ -6,6 +6,8 @@
 
 namespace lasm {
 
+class AdvectionTestCase;
+
 /**
  *  This class specifies the manager of linear advection.
  */
@@ -95,6 +97,9 @@ public:
     void advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                  const VelocityField &velocity);
 
+    void advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
+                 const AdvectionTestCase &testCase);
+
     /**
      *  Calculate the total mass of every tracer species, and store the results
      *  into tracerMeshCells.
@@ -112,6 +117,9 @@ public:
      */
     void integrate_RK4(double dt, const TimeLevelIndex<2> &newTimeIdx,
                        const VelocityField &velocity);
+
+    void integrate_RK4(double dt, const TimeLevelIndex<2> &newTimeIdx,
+                       const AdvectionTestCase &testCase);
 
     /**
      *  Find out in which cell the tracer is.

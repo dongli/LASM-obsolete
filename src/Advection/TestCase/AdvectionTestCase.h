@@ -18,6 +18,7 @@ protected:
     VelocityField velocity;
     SingleScalarField volumes;
     vector<ScalarField*> *density;
+    bool useAnalyticalVelocity;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
@@ -30,6 +31,8 @@ public:
     virtual const Mesh& getMesh() const { return *mesh; }
 
     virtual const VelocityField& getVelocityField() const { return velocity; }
+
+    bool isUseAnalyticalVelocity() const { return useAnalyticalVelocity; }
 
     /**
      *  Register default output fields including velocity field and meshed
@@ -92,6 +95,12 @@ public:
      */
     virtual void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                               AdvectionManager &advectionManager);
+
+    virtual void evalVelocity(double dt, const SpaceCoord &x,
+                              bool isMoveOnPole, Velocity &v) const;
+
+    virtual void evalDivergence(double dt, const SpaceCoord &x,
+                                double &div) const;
 protected:
     /**
      *  Calculate the solution of the test case if any.
