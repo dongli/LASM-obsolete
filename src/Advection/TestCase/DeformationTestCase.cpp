@@ -18,7 +18,7 @@ DeformationTestCase::~DeformationTestCase() {
 
 void DeformationTestCase::init(const ConfigManager &configManager,
                                TimeManager &timeManager) {
-    // initialize domain
+    // Initialize domain.
     domain = new geomtk::SphereDomain(2);
     domain->setRadius(1);
     // Initialize mesh.

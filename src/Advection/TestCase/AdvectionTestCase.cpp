@@ -88,6 +88,7 @@ void AdvectionTestCase::output(const TimeLevelIndex<2> &timeIdx,
 void AdvectionTestCase::calcSolution(double dt,
                                      const TimeLevelIndex<2> &timeIdx,
                                      AdvectionManager &advectionManager) {
+    REPORT_ERROR("calcSolution is not available!");
 }
 
 void AdvectionTestCase::calcSolution(double dt,

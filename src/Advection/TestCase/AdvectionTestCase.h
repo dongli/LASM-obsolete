@@ -26,7 +26,9 @@ public:
                       TimeManager &timeManager);
 
     virtual const Domain& getDomain() const { return *domain; }
+
     virtual const Mesh& getMesh() const { return *mesh; }
+
     virtual const VelocityField& getVelocityField() const { return velocity; }
 
     /**

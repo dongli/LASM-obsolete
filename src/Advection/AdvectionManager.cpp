@@ -177,12 +177,12 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     REPORT_NOTICE("connectTracersAndMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 
     time1 = clock();
-    remapTracersToMesh(newTimeIdx, &velocity);
+    remapTracersToMesh(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("remapTracersToMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 
     time1 = clock();
-    checkTracerShapes(newTimeIdx, velocity);
+    checkTracerShapes(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("checkTracerShapes uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
 
@@ -240,7 +240,7 @@ void AdvectionManager::integrate_RK4(double dt,
         double k2_rho[tracerManager.getNumSpecies()];
         double k3_rho[tracerManager.getNumSpecies()];
         double k4_rho[tracerManager.getNumSpecies()];
-        // update location and deformation matrix of tracer
+        // Update the centroid and deformation matrix of the tracer.
         SpaceCoord &x0 = tracer->getX(oldTimeIdx);
         SpaceCoord &x1 = tracer->getX(newTimeIdx);
         MeshIndex &idx0 = tracer->getMeshIndex(oldTimeIdx);
@@ -298,7 +298,7 @@ void AdvectionManager::integrate_RK4(double dt,
 #ifdef USE_SPHERE_DOMAIN
         x1.transformToCart(*domain);
 #endif
-        // update skeleton points of tracer
+        // Update the skeleton points of the tracer.
         TracerSkeleton &s = tracer->getSkeleton();
         vector<SpaceCoord*> &x0s = s.getSpaceCoords(oldTimeIdx);
         vector<SpaceCoord*> &x1s = s.getSpaceCoords(newTimeIdx);
@@ -395,8 +395,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 
-void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
-                                         const VelocityField &velocity) {
+void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx) {
     numMixedTracer = 0;
     const double cosThetaBound = cos(20*RAD);
 
@@ -759,8 +758,7 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 
-void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx,
-                                          const VelocityField *velocity) {
+void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     numVoidCell = 0;
     meshAdaptor.resetSpecies(timeIdx);
 #pragma omp parallel for

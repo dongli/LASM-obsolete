@@ -10,9 +10,9 @@ int main(int argc, const char *argv[])
     lasm::AdvectionManager advectionManager;
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
-    // parse configuration
+    // Parse configuration.
     configManager.parse(argv[1]);
-    // choose test case
+    // Choose test case.
     bool isTrueSolution = false;
     std::string testCaseName, subcaseName = "";
     configManager.getValue("test_case", "case_name", testCaseName);
@@ -35,7 +35,7 @@ int main(int argc, const char *argv[])
     else {
         REPORT_ERROR("Unknown test_case \"" << testCaseName << "\"!");
     }
-    // initialization
+    // Initialization.
     testCase->init(configManager, timeManager);
     timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
                      testCase->getStepSize());
@@ -44,7 +44,7 @@ int main(int argc, const char *argv[])
     testCase->calcInitCond(advectionManager);
     testCase->advance(timeManager.getSeconds(), oldTimeIdx);
     testCase->output(oldTimeIdx, advectionManager);
-    // integration loop
+    // Integration loop.
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
         double time = timeManager.getSeconds()+timeManager.getStepSize();

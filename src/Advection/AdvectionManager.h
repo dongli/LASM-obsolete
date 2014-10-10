@@ -107,10 +107,10 @@ public:
      *  Integrate the advection equations by using 4th-order Runge-Kutta method.
      *
      *  @param dt         the time step size.
-     *  @param oldTimeIdx the old time level index.
+     *  @param newTimeIdx the new time level index.
      *  @param velocity   the velocity field.
      */
-    void integrate_RK4(double dt, const TimeLevelIndex<2> &oldTimeIdx,
+    void integrate_RK4(double dt, const TimeLevelIndex<2> &newTimeIdx,
                        const VelocityField &velocity);
 
     /**
@@ -136,8 +136,7 @@ public:
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
 
-    void checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
-                           const VelocityField &velocity);
+    void checkTracerShapes(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Mix tracer with its surrounding tracers.
@@ -165,8 +164,7 @@ public:
      *
      *  @param timeIdx the time level index.
      */
-    void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx,
-                            const VelocityField *velocity = NULL);
+    void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Correct the total mass when remapping tracer density.
