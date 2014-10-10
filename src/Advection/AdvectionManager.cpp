@@ -415,8 +415,7 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx,
         if (filament < strictFilamentLimit ||
             tracer->actualFilamentLimit == strictFilamentLimit) continue;
         const vector<int> &connectedCells = tracer->getConnectedCells();
-        if (connectedCells.size() <= 1) {
-            CHECK_POINT;
+        if (connectedCells.size() <= 1 || tracer->getDetH(timeIdx) < 1.5*meshAdaptor.volume(tracer->getHostCell())) {
             continue;
         }
         vector<Tracer*> tracers;
