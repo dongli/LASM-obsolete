@@ -5,14 +5,14 @@ namespace lasm {
 TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
     this->host = host;
     y.resize(numDim*2);
-    for (int l = 0; l < x.getNumLevel(); ++l) {
-        x.getLevel(l).resize(y.size());
-        idx.getLevel(l).resize(y.size());
-        xl.getLevel(l).resize(y.size());
-        for (int i = 0; i < x.getLevel(l).size(); ++i) {
-            x.getLevel(l)[i] = new SpaceCoord(numDim);
-            idx.getLevel(l)[i] = new MeshIndex(numDim);
-            xl.getLevel(l)[i].set_size(numDim);
+    for (int l = 0; l < x.numLevel(); ++l) {
+        x.level(l).resize(y.size());
+        idx.level(l).resize(y.size());
+        xl.level(l).resize(y.size());
+        for (int i = 0; i < x.level(l).size(); ++i) {
+            x.level(l)[i] = new SpaceCoord(numDim);
+            idx.level(l)[i] = new MeshIndex(numDim);
+            xl.level(l)[i].set_size(numDim);
         }
     }
     for (int i = 0; i < y.size(); ++i) {
@@ -35,10 +35,10 @@ TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
 }
 
 TracerSkeleton::~TracerSkeleton() {
-    for (int l = 0; l < x.getNumLevel(); ++l) {
-        for (int i = 0; i < x.getLevel(l).size(); ++i) {
-            delete x.getLevel(l)[i];
-            delete idx.getLevel(l)[i];
+    for (int l = 0; l < x.numLevel(); ++l) {
+        for (int i = 0; i < x.level(l).size(); ++i) {
+            delete x.level(l)[i];
+            delete idx.level(l)[i];
         }
     }
     for (int i = 0; i < y.size(); ++i) {
@@ -48,10 +48,10 @@ TracerSkeleton::~TracerSkeleton() {
     
 TracerSkeleton& TracerSkeleton::operator=(const TracerSkeleton &other) {
     if (this != &other) {
-        for (int l = 0; l < x.getNumLevel(); ++l) {
-            for (int i = 0; i < x.getLevel(l).size(); ++i) {
-                *(x.getLevel(l)[i]) = *(other.x.getLevel(l)[i]);
-                *(idx.getLevel(l)[i]) = *(other.idx.getLevel(l)[i]);
+        for (int l = 0; l < x.numLevel(); ++l) {
+            for (int i = 0; i < x.level(l).size(); ++i) {
+                *(x.level(l)[i]) = *(other.x.level(l)[i]);
+                *(idx.level(l)[i]) = *(other.idx.level(l)[i]);
             }
         }
         for (int i = 0; i < y.size(); ++i) {
@@ -79,45 +79,45 @@ void TracerSkeleton::init(const Domain &domain, const Mesh &mesh,
                           double size) {
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
-    const SpaceCoord &x0 = host->getX(initTimeIdx);
+    const SpaceCoord &x0 = host->x(initTimeIdx);
     double dtheta = PI2/4;
 #if defined USE_SPHERE_DOMAIN
-    double lon, lat = M_PI_2-size/domain.getRadius();
-    SpaceCoord xr(domain.getNumDim());
+    double lon, lat = M_PI_2-size/domain.radius();
+    SpaceCoord xr(domain.numDim());
     for (int i = 0; i < 4; ++i) {
         lon = i*dtheta;
         xr.setCoord(lon, lat);
-        domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
-        x.getLevel(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
+        domain.rotateBack(x0, *x.level(initTimeIdx)[i], xr);
+        x.level(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
     }
 #elif defined USE_CARTESIAN_DOMAIN
     for (int i = 0; i < 4; ++i) {
         double theta = i*dtheta;
-        (*x.getLevel(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
-        (*x.getLevel(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
-        domain.constrain(*x.getLevel(initTimeIdx)[i]);
+        (*x.level(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
+        (*x.level(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
+        domain.constrain(*x.level(initTimeIdx)[i]);
     }
 #endif
-    if (domain.getNumDim() == 3) {
+    if (domain.numDim() == 3) {
         REPORT_ERROR("Under construction!");
         
     }
     for (int i = 0; i < y.size(); ++i) {
-        idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);
+        idx.level(initTimeIdx)[i]->locate(mesh, *x.level(initTimeIdx)[i]);
     }
 }
     
 void TracerSkeleton::updateLocalCoord(const Domain &domain,
                                       const TimeLevelIndex<2> &timeIdx) {
-    const SpaceCoord &x0 = host->getX(timeIdx);
+    const SpaceCoord &x0 = host->x(timeIdx);
 #ifdef USE_SPHERE_DOMAIN
-    for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
+    for (int i = 0; i < x.level(timeIdx).size(); ++i) {
         domain.project(geomtk::SphereDomain::STEREOGRAPHIC, x0,
-                       *x.getLevel(timeIdx)[i], xl.getLevel(timeIdx)[i]);
+                       *x.level(timeIdx)[i], xl.level(timeIdx)[i]);
     }
 #else
-    for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
-        xl.getLevel(timeIdx)[i] = domain.diffCoord((*x.getLevel(timeIdx)[i]), x0);
+    for (int i = 0; i < x.level(timeIdx).size(); ++i) {
+        xl.level(timeIdx)[i] = domain.diffCoord((*x.level(timeIdx)[i]), x0);
     }
 #endif
 }

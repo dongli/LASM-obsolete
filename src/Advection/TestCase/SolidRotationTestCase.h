@@ -17,9 +17,11 @@ public:
     virtual void init(const ConfigManager &configManager,
                       TimeManager &timeManager);
 
-    virtual Time getStartTime() const;
-    virtual Time getEndTime() const;
-    virtual double getStepSize() const;
+    virtual Time startTime() const;
+
+    virtual Time endTime() const;
+
+    virtual double stepSize() const;
 
     virtual void calcInitCond(AdvectionManager &advectionManager);
 

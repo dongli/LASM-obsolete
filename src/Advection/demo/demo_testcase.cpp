@@ -37,28 +37,28 @@ int main(int argc, const char *argv[])
     }
     // Initialization.
     testCase->init(configManager, timeManager);
-    timeManager.init(testCase->getStartTime(), testCase->getEndTime(),
-                     testCase->getStepSize());
-    advectionManager.init(testCase->getDomain(), testCase->getMesh(), configManager);
+    timeManager.init(testCase->startTime(), testCase->endTime(),
+                     testCase->stepSize());
+    advectionManager.init(testCase->domain(), testCase->mesh(), configManager);
 
     testCase->calcInitCond(advectionManager);
-    testCase->advance(timeManager.getSeconds(), oldTimeIdx);
+    testCase->advance(timeManager.seconds(), oldTimeIdx);
     testCase->output(oldTimeIdx, advectionManager);
     // Integration loop.
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
-        double time = timeManager.getSeconds()+timeManager.getStepSize();
+        double time = timeManager.seconds()+timeManager.stepSize();
         testCase->advance(time, newTimeIdx);
         if (!testCase->isUseAnalyticalVelocity()) {
-            advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
-                                     testCase->getVelocityField());
+            advectionManager.advance(timeManager.stepSize(), newTimeIdx,
+                                     testCase->velocityField());
         } else {
-            advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
+            advectionManager.advance(timeManager.stepSize(), newTimeIdx,
                                      *testCase);
         }
         if (isTrueSolution) {
-            testCase->calcSolution(timeManager.getStepSize(),
-                                   newTimeIdx, advectionManager);
+            testCase->calcSolution(timeManager.stepSize(), newTimeIdx,
+                                   advectionManager);
         }
         timeManager.advance();
         oldTimeIdx.shift();

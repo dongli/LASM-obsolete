@@ -36,9 +36,9 @@ public:
 
     void resetContainedTracers();
 
-    const SpaceCoord& coord(int i) const { return mesh->getGridCoord(CENTER, i); }
+    const SpaceCoord& coord(int i) const { return mesh->gridCoord(CENTER, i); }
 
-    double volume(int i) const { return mesh->getCellVolume(i); }
+    double volume(int i) const { return mesh->cellVolume(i); }
 
     vector<ScalarField*>& density() { return _density; }
 

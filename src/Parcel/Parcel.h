@@ -10,75 +10,54 @@ namespace lasm {
  */
 class Parcel {
 protected:
-    int ID;
-    TimeLevels<SpaceCoord*, 2> q;           //>! centroid coordinate
-    TimeLevels<mat*, 2> H;                  //>! deformation matrix
-    TimeLevels<double, 2> detH;             //>! determinant of H
-    TimeLevels<mat*, 2> invH;               //>! inversion of H
-    TimeLevels<vec::fixed<2>, 2> shapeSize; //>! parcel shape size
-    TimeLevels<MeshIndex*, 2> idx;          //>! parcel mesh index
+    int _ID;
+    TimeLevels<SpaceCoord*, 2> _q;           //>! centroid coordinate
+    TimeLevels<mat*, 2> _H;                  //>! deformation matrix
+    TimeLevels<double, 2> _detH;             //>! determinant of H
+    TimeLevels<mat*, 2> _invH;               //>! inversion of H
+    TimeLevels<vec::fixed<2>, 2> _shapeSize; //>! parcel shape size
+    TimeLevels<MeshIndex*, 2> _idx;           //>! parcel mesh index
     
-    mat U, V;   //>! SVD decomposed matrices
-    vec S;      //>! SVD decomposed matrices
+    mat _U, _V; //>! SVD decomposed matrices
+    vec _S;     //>! SVD decomposed matrices
 public:
     Parcel(int numDim);
     virtual ~Parcel();
 
     Parcel& operator=(const Parcel &other);
-    
-    /**
-     *  Set the ID of tracer.
-     *
-     *  @param ID the given ID.
-     */
-    virtual void setID(int ID) { this->ID = ID; }
 
-    /**
-     *  Get the ID of tracer.
-     *
-     *  @return The ID.
-     */
-    virtual int getID() const { return ID; }
+    virtual int& ID() { return _ID; }
 
-    /**
-     *  Get the spatial coordinate of tracer.
-     *
-     *  @param timeIdx the time level index.
-     *
-     *  @return The spatial coordinate.
-     */
-    SpaceCoord& getX(const TimeLevelIndex<2> &timeIdx) {
-        return *(q.getLevel(timeIdx));
+    virtual int ID() const { return _ID; }
+
+    SpaceCoord& x(const TimeLevelIndex<2> &timeIdx) {
+        return *(_q.level(timeIdx));
     }
 
-    /**
-     *  Get the deformation matrix of tracer.
-     *
-     *  @param timeIdx the time level index.
-     *
-     *  @return The deformation matrix.
-     */
-    mat& getH(const TimeLevelIndex<2> &timeIdx) {
-        return *(H.getLevel(timeIdx));
+    MeshIndex& meshIndex(const TimeLevelIndex<2> &timeIdx) {
+        return *_idx.level(timeIdx);
     }
 
-    double getDetH(const TimeLevelIndex<2> &timeIdx) const {
-        return detH.getLevel(timeIdx);
+    mat& H(const TimeLevelIndex<2> &timeIdx) {
+        return *(_H.level(timeIdx));
+    }
+
+    mat& U() { return _U; }
+
+    mat& V() { return _V; }
+
+    vec& S() { return _S; }
+
+    double detH(const TimeLevelIndex<2> &timeIdx) const {
+        return _detH.level(timeIdx);
     }
     
-    double& getDetH(const TimeLevelIndex<2> &timeIdx) {
-        return detH.getLevel(timeIdx);
+    double& detH(const TimeLevelIndex<2> &timeIdx) {
+        return _detH.level(timeIdx);
     }
 
-    /**
-     *  Get the inverse deformation matrix of tracer.
-     *
-     *  @param timeIdx the time level index.
-     *
-     *  @return The inverse deformation matrix.
-     */
-    mat& getInvH(const TimeLevelIndex<2> &timeIdx) {
-        return *(invH.getLevel(timeIdx));
+    mat& invH(const TimeLevelIndex<2> &timeIdx) {
+        return *(_invH.level(timeIdx));
     }
 
     /**
@@ -89,9 +68,9 @@ public:
      *  @param y       the body coordinate.
      *  @param x       the spatial coordinate.
      */
-    void getSpaceCoord(const Domain &domain,
-                       const TimeLevelIndex<2> &timeIdx,
-                       const BodyCoord &y, SpaceCoord &x);
+    void calcSpaceCoord(const Domain &domain,
+                        const TimeLevelIndex<2> &timeIdx,
+                        const BodyCoord &y, SpaceCoord &x);
     
     /**
      *  Transform spatial coordinate into body coordinate.
@@ -101,9 +80,9 @@ public:
      *  @param x       the spatial coordinate.
      *  @param y       the body coordinate.
      */
-    void getBodyCoord(const Domain &domain,
-                      const TimeLevelIndex<2> &timeIdx,
-                      const SpaceCoord &x, BodyCoord &y);
+    void calcBodyCoord(const Domain &domain,
+                       const TimeLevelIndex<2> &timeIdx,
+                       const SpaceCoord &x, BodyCoord &y);
 
     /**
      *  Get the shape function value for a given body coordinate.
@@ -113,20 +92,13 @@ public:
      *
      *  @return The shape function value.
      */
-    double getShapeFunction(const TimeLevelIndex<2> &timeIdx,
-                            const BodyCoord &y);
-
-    mat& getU() { return U; }
-    
-    mat& getV() { return V; }
-    
-    vec& getS() { return S; }
+    double shapeFunction(const TimeLevelIndex<2> &timeIdx, const BodyCoord &y);
     
     void updateShapeSize(const Domain &domain,
                          const TimeLevelIndex<2> &timeIdx);
 
-    const vec::fixed<2>& getShapeSize(const TimeLevelIndex<2> &timeIdx) const {
-        return shapeSize.getLevel(timeIdx);
+    const vec::fixed<2>& shapeSize(const TimeLevelIndex<2> &timeIdx) const {
+        return _shapeSize.level(timeIdx);
     }
 };
 

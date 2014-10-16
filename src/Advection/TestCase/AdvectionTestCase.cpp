@@ -3,8 +3,8 @@
 namespace lasm {
 
 AdvectionTestCase::AdvectionTestCase() {
-    domain = NULL;
-    mesh = NULL;
+    _domain = NULL;
+    _mesh = NULL;
     density = NULL;
     restartFileName = "N/A";
     useAnalyticalVelocity = false;
@@ -32,23 +32,23 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
         configManager.getValue("test_case", "use_analytical_velocity", useAnalyticalVelocity);
     }
     if (unit == "steps") {
-        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+        outputFileIdx = io.registerOutputFile(*_mesh, pattern,
                                               TimeStepUnit::STEP, freq);
     } else if (unit == "minutes") {
-        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+        outputFileIdx = io.registerOutputFile(*_mesh, pattern,
                                               TimeStepUnit::MINUTE, freq);
     } else if (unit == "hours") {
-        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+        outputFileIdx = io.registerOutputFile(*_mesh, pattern,
                                               TimeStepUnit::HOUR, freq);
     } else if (unit == "days") {
-        outputFileIdx = io.registerOutputFile(*mesh, pattern,
+        outputFileIdx = io.registerOutputFile(*_mesh, pattern,
                                               TimeStepUnit::DAY, freq);
     } else {
         REPORT_ERROR("Unknown output frequency unit \"" << unit << "\"!");
     }
-    volumes.create("vol", "m2", "grid cell volume", *mesh, CENTER, 2);
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        volumes(i) = mesh->getCellVolume(i);
+    volumes.create("vol", "m2", "grid cell volume", mesh(), CENTER, 2);
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        volumes(i) = mesh().cellVolume(i);
     }
 }
 
@@ -56,7 +56,7 @@ void AdvectionTestCase::registerDefaultOutput() {
     if (!useAnalyticalVelocity) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                              {&velocity(0), &velocity(1),
-                                              &velocity.getDivergence()});
+                                              &velocity.divergence()});
     }
     io.file(outputFileIdx).registerField("double", FULL_DIMENSION, {&volumes});
     for (int s = 0; s < density->size(); ++s) {
@@ -70,7 +70,7 @@ void AdvectionTestCase::startOutput(const TimeLevelIndex<2> &timeIdx) {
     if (!useAnalyticalVelocity) {
         io.output<double, 2>(outputFileIdx, timeIdx,
                              {&velocity(0), &velocity(1),
-                              &velocity.getDivergence()});
+                              &velocity.divergence()});
     }
     io.output<double>(outputFileIdx, {&volumes});
     for (int s = 0; s < density->size(); ++s) {

@@ -6,7 +6,7 @@ double ShapeFunction::J;
 vec ShapeFunction::nodes;
 vec ShapeFunction::weights;
 const Domain* ShapeFunction::domain;
-double ShapeFunction::maxValue;
+double ShapeFunction::_maxValue;
 
 void ShapeFunction::init(const Domain &domain_) {
     J = 1.0/12.0;
@@ -19,14 +19,14 @@ void ShapeFunction::init(const Domain &domain_) {
     nodes(3) =  1.0/3.0; weights(3) = 316.0/1280.0;
     nodes(4) =  2.0/3.0; weights(4) =  41.0/1280.0;
     
-    maxValue = pow(4.0/3.0, domain_.getNumDim());
+    _maxValue = pow(4.0/3.0, domain_.numDim());
 
     domain = &domain_;
 }
 
 void ShapeFunction::evalFunc(const BodyCoord &y, double &f) {
     f = 1.0;
-    for (int i = 0; i < domain->getNumDim(); ++i) {
+    for (int i = 0; i < domain->numDim(); ++i) {
         if (-1.0 <= y(i) && y(i) <= -0.5) {
             f *= 2.0*pow(1.0+y(i), 3.0);
         } else if (-0.5 <= y(i) && y(i) <= 0.0) {
@@ -45,11 +45,11 @@ void ShapeFunction::evalFunc(const BodyCoord &y, double &f) {
 
 void ShapeFunction::evalDerv(const BodyCoord& y, vec &d) {
 #ifndef NDEBUG
-    assert(d.size() == domain->getNumDim());
+    assert(d.size() == domain->numDim());
 #endif
     d.ones();
-    for (int i = 0; i < domain->getNumDim(); ++i) {
-        for (int j = 0; j < domain->getNumDim(); ++j) {
+    for (int i = 0; i < domain->numDim(); ++i) {
+        for (int j = 0; j < domain->numDim(); ++j) {
             if (i == j) {
                 if (-1.0 <= y(j) && y(j) <= -0.5) {
                     d(i) *= 6.0*pow(1.0+y(j), 2.0);

@@ -4,15 +4,15 @@
 namespace lasm {
 
 Tracer::Tracer(int numDim) : Parcel(numDim) {
-    skeleton = new TracerSkeleton(this, numDim);
+    _skeleton = new TracerSkeleton(this, numDim);
     type = GOOD_SHAPE;
     vy = new BodyCoord(numDim);
     vx = new SpaceCoord(numDim);
-    numConnectedCell = 0;
+    _numConnectedCell = 0;
 }
 
 Tracer::~Tracer() {
-    delete skeleton;
+    delete _skeleton;
     delete vy;
     delete vx;
 }
@@ -24,33 +24,33 @@ Tracer& Tracer::operator=(const Tracer &other) {
             _density[s] = other._density[s];
             _mass[s] = other._mass[s];
         }
-        *skeleton = *(other.skeleton);
+        *_skeleton = *(other._skeleton);
         // TODO: Handle connected cells.
     }
     return *this;
 }
 
 void Tracer::resetConnectedCells() {
-    numConnectedCell = 0;
+    _numConnectedCell = 0;
 }
 
 void Tracer::connectCell(int i) {
-    if (numConnectedCell == connectedCellIdxs.size()) {
-        connectedCellIdxs.push_back(i);
+    if (_numConnectedCell == _connectedCellIndices.size()) {
+        _connectedCellIndices.push_back(i);
     } else {
-        connectedCellIdxs[numConnectedCell] = i;
+        _connectedCellIndices[_numConnectedCell] = i;
     }
-    numConnectedCell++;
+    _numConnectedCell++;
 }
     
 void Tracer::updateDeformMatrix(const Domain &domain,
                                 const Mesh &mesh,
                                 const TimeLevelIndex<2> &timeIdx) {
-    skeleton->updateLocalCoord(domain, timeIdx);
-    const vector<vec> &xl = skeleton->getLocalCoords(timeIdx);
-    const vector<BodyCoord*> &y = skeleton->getBodyCoords();
-    mat &H0 = *H.getLevel(timeIdx);
-    if (domain.getNumDim() == 2) {
+    _skeleton->updateLocalCoord(domain, timeIdx);
+    const vector<vec> &xl = _skeleton->localCoords(timeIdx);
+    const vector<BodyCoord*> &y = _skeleton->bodyCoords();
+    mat &H0 = *_H.level(timeIdx);
+    if (domain.numDim() == 2) {
         // elements of four matrices H_12, H_14, H_32, H_34
         double h11_1 = xl[0][0]/(*y[0])(0);
         double h21_1 = xl[0][1]/(*y[0])(0);
@@ -65,11 +65,11 @@ void Tracer::updateDeformMatrix(const Domain &domain,
         H0(0, 1) = (h12_2+h12_4)*0.5;
         H0(1, 0) = (h21_1+h21_3)*0.5;
         H0(1, 1) = (h22_2+h22_4)*0.5;
-        if (!svd(U, S, V, H0)) {
+        if (!svd(_U, _S, _V, H0)) {
             REPORT_ERROR("Encounter error with arma::svd!");
         }
 #ifndef NDEBUG
-        assert(S[0] >= S[1]);
+        assert(_S[0] >= _S[1]);
 #endif
         // reset the determinant of H to parcel volume
         // NOTE: Parcel volume is represented by the first tracer.
@@ -82,16 +82,16 @@ void Tracer::updateDeformMatrix(const Domain &domain,
             }
             if (s != _mass.size()) {
                 double volume = _mass[s]/_density[s];
-                double tmp = sqrt(volume/(S[0]*S[1]));
-                S[0] *= tmp; S[1] *= tmp;
-                H0 = U*diagmat(S)*V.t();
+                double tmp = sqrt(volume/(_S[0]*_S[1]));
+                _S[0] *= tmp; _S[1] *= tmp;
+                H0 = _U*diagmat(_S)*_V.t();
             }
         }
-        detH.getLevel(timeIdx) = arma::prod(S);
-        *invH.getLevel(timeIdx) = inv(H0);
-        (*vy)() = *invH.getLevel(timeIdx)*H0*V.col(0);
-        getSpaceCoord(domain, timeIdx, *vy, *vx);
-    } else if (domain.getNumDim() == 3) {
+        _detH.level(timeIdx) = arma::prod(_S);
+        *_invH.level(timeIdx) = inv(H0);
+        (*vy)() = *_invH.level(timeIdx)*H0*_V.col(0);
+        calcSpaceCoord(domain, timeIdx, *vy, *vx);
+    } else if (domain.numDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
     updateShapeSize(domain, timeIdx);
@@ -99,22 +99,22 @@ void Tracer::updateDeformMatrix(const Domain &domain,
 
 void Tracer::updateDeformMatrix(const Domain &domain,
                                 const TimeLevelIndex<2> &timeIdx) {
-    mat &H0 = *H.getLevel(timeIdx);
-    H0 = U*diagmat(S)*V.t();
-    detH.getLevel(timeIdx) = arma::prod(S);
-    *invH.getLevel(timeIdx) = inv(H0);
-    (*vy)() = *invH.getLevel(timeIdx)*H0*V.col(0);
-    getSpaceCoord(domain, timeIdx, *vy, *vx);
+    mat &H0 = *_H.level(timeIdx);
+    H0 = _U*diagmat(_S)*_V.t();
+    _detH.level(timeIdx) = arma::prod(_S);
+    *_invH.level(timeIdx) = inv(H0);
+    (*vy)() = *_invH.level(timeIdx)*H0*_V.col(0);
+    calcSpaceCoord(domain, timeIdx, *vy, *vx);
 }
 
 void Tracer::resetSkeleton(const Domain &domain, const Mesh &mesh,
                            const TimeLevelIndex<2> &timeIdx) {
     // reset skeleton points
-    const vector<BodyCoord*> &y = skeleton->getBodyCoords();
-    vector<SpaceCoord*> &x = skeleton->getSpaceCoords(timeIdx);
-    vector<MeshIndex*> &meshIdx = skeleton->getMeshIdxs(timeIdx);
+    const vector<BodyCoord*> &y = _skeleton->bodyCoords();
+    vector<SpaceCoord*> &x = _skeleton->spaceCoords(timeIdx);
+    vector<MeshIndex*> &meshIdx = _skeleton->meshIndices(timeIdx);
     for (int i = 0; i < x.size(); ++i) {
-        getSpaceCoord(domain, timeIdx, *y[i], *x[i]);
+        calcSpaceCoord(domain, timeIdx, *y[i], *x[i]);
         meshIdx[i]->reset();
         meshIdx[i]->locate(mesh, *x[i]);
     }
@@ -123,14 +123,14 @@ void Tracer::resetSkeleton(const Domain &domain, const Mesh &mesh,
 void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
                   const MeshAdaptor &meshAdaptor, ofstream &file, int idx) {
     // tracer centroid
-    file << "centroid" << idx << " = (/" << getX(timeIdx)(0)/RAD << ",";
-    file << getX(timeIdx)(1)/RAD << "/)" << endl;
+    file << "centroid" << idx << " = (/" << x(timeIdx)(0)/RAD << ",";
+    file << x(timeIdx)(1)/RAD << "/)" << endl;
     // tracer skeleton points
     file << "skel_points" << idx << " = new((/4,2/), double)" << endl;
     for (int m = 0; m < 2; ++m) {
         file << "skel_points" << idx << "(:," << m << ") = (/";
-        for (int i = 0; i < skeleton->getSpaceCoords(timeIdx).size(); ++i) {
-            file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD;
+        for (int i = 0; i < _skeleton->spaceCoords(timeIdx).size(); ++i) {
+            file << (*_skeleton->spaceCoords(timeIdx)[i])(m)/RAD;
             if (i != 3) {
                 file << ",";
             } else {
@@ -149,7 +149,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         double theta = i*dtheta;
         y(0) = cos(theta);
         y(1) = sin(theta);
-        getSpaceCoord(domain, timeIdx, y, x);
+        calcSpaceCoord(domain, timeIdx, y, x);
         shape[i] = x();
     }
     for (int m = 0; m < 2; ++m) {
@@ -163,14 +163,14 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         }
     }
     // connected cells
-    if (numConnectedCell != 0) {
-        file << "ngb_cells" << idx << " = new((/" << numConnectedCell
+    if (_numConnectedCell != 0) {
+        file << "ngb_cells" << idx << " = new((/" << _numConnectedCell
             << ",2/), double)" << endl;
         for (int m = 0; m < 2; ++m) {
             file << "ngb_cells" << idx << "(:," << m << ") = (/";
-            for (int i = 0; i < numConnectedCell; ++i) {
-                file << meshAdaptor.coord(connectedCellIdxs[i])(m)/RAD;
-                if (i != numConnectedCell-1) {
+            for (int i = 0; i < _numConnectedCell; ++i) {
+                file << meshAdaptor.coord(_connectedCellIndices[i])(m)/RAD;
+                if (i != _numConnectedCell-1) {
                     file << ",";
                 } else {
                     file << "/)" << endl;
@@ -180,8 +180,8 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
     }
     // neighbor tracer locations
     int numNeighborTracer = 0;
-    for (int i = 0; i < numConnectedCell; ++i) {
-        int j = connectedCellIdxs[i];
+    for (int i = 0; i < _numConnectedCell; ++i) {
+        int j = _connectedCellIndices[i];
         numNeighborTracer += meshAdaptor.numContainedTracer(j);
     }
     if (numNeighborTracer != 0) {
@@ -189,10 +189,10 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         for (int m = 0; m < 2; ++m) {
             file << "ngb_tracers" << idx << "(:," << m << ") = (/";
             int k = 0;
-            for (int i = 0; i < numConnectedCell; ++i) {
-                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(connectedCellIdxs[i]);
-                for (int j = 0; j < meshAdaptor.numContainedTracer(connectedCellIdxs[i]); ++j) {
-                    file << tracers[j]->getX(timeIdx)(m)/RAD;
+            for (int i = 0; i < _numConnectedCell; ++i) {
+                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(_connectedCellIndices[i]);
+                for (int j = 0; j < meshAdaptor.numContainedTracer(_connectedCellIndices[i]); ++j) {
+                    file << tracers[j]->x(timeIdx)(m)/RAD;
                     if (k != numNeighborTracer-1) {
                         file << ",";
                     } else {
@@ -209,14 +209,14 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
                   const MeshAdaptor &meshAdaptor) {
     std::ofstream file; file.open("tracer_dump.txt");
     // tracer centroid
-    file << "centroid = (/" << getX(timeIdx)(0)/RAD << ",";
-    file << getX(timeIdx)(1)/RAD << "/)" << endl;
+    file << "centroid = (/" << x(timeIdx)(0)/RAD << ",";
+    file << x(timeIdx)(1)/RAD << "/)" << endl;
     // tracer skeleton points
     file << "skel_points = new((/4,2/), double)" << endl;
     for (int m = 0; m < 2; ++m) {
         file << "skel_points(:," << m << ") = (/";
-        for (int i = 0; i < skeleton->getSpaceCoords(timeIdx).size(); ++i) {
-            file << (*skeleton->getSpaceCoords(timeIdx)[i])(m)/RAD;
+        for (int i = 0; i < _skeleton->spaceCoords(timeIdx).size(); ++i) {
+            file << (*_skeleton->spaceCoords(timeIdx)[i])(m)/RAD;
             if (i != 3) {
                 file << ",";
             } else {
@@ -235,7 +235,7 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         double theta = i*dtheta;
         y(0) = cos(theta);
         y(1) = sin(theta);
-        getSpaceCoord(domain, timeIdx, y, x);
+        calcSpaceCoord(domain, timeIdx, y, x);
         shape[i] = x();
     }
     for (int m = 0; m < 2; ++m) {
@@ -249,14 +249,14 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         }
     }
     // neighbor cell locations
-    if (numConnectedCell != 0) {
-        file << "ngb_cells = new((/" << numConnectedCell << ",2/), double)" << endl;
+    if (_numConnectedCell != 0) {
+        file << "ngb_cells = new((/" << _numConnectedCell << ",2/), double)" << endl;
         for (int m = 0; m < 2; ++m) {
             file << "ngb_cells(:," << m << ") = (/";
-            for (int i = 0; i < numConnectedCell; ++i) {
-                int j = connectedCellIdxs[i];
+            for (int i = 0; i < _numConnectedCell; ++i) {
+                int j = _connectedCellIndices[i];
                 file << meshAdaptor.coord(j)(m)/RAD;
-                if (i != numConnectedCell-1) {
+                if (i != _numConnectedCell-1) {
                     file << ",";
                 } else {
                     file << "/)" << endl;
@@ -266,8 +266,8 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
     }
     // neighbor tracer locations
     int numNeighborTracer = 0;
-    for (int i = 0; i < numConnectedCell; ++i) {
-        int j = connectedCellIdxs[i];
+    for (int i = 0; i < _numConnectedCell; ++i) {
+        int j = _connectedCellIndices[i];
         numNeighborTracer += meshAdaptor.numContainedTracer(j);
     }
     if (numNeighborTracer != 0) {
@@ -275,10 +275,10 @@ void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const Domain &domain,
         for (int m = 0; m < 2; ++m) {
             file << "ngb_tracers(:," << m << ") = (/";
             int k = 0;
-            for (int i = 0; i < numConnectedCell; ++i) {
-                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(connectedCellIdxs[i]);
-                for (int j = 0; j < meshAdaptor.numContainedTracer(connectedCellIdxs[i]); ++j) {
-                    file << tracers[j]->getX(timeIdx)(m)/RAD;
+            for (int i = 0; i < _numConnectedCell; ++i) {
+                const vector<Tracer*> &tracers = meshAdaptor.containedTracers(_connectedCellIndices[i]);
+                for (int j = 0; j < meshAdaptor.numContainedTracer(_connectedCellIndices[i]); ++j) {
+                    file << tracers[j]->x(timeIdx)(m)/RAD;
                     if (k != numNeighborTracer-1) {
                         file << ",";
                     } else {

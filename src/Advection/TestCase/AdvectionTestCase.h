@@ -8,8 +8,8 @@ namespace lasm {
 
 class AdvectionTestCase {
 protected:
-    Domain *domain;
-    Mesh *mesh;
+    Domain *_domain;
+    Mesh *_mesh;
     TimeManager *timeManager;
     IOManager io;
     int outputFileIdx;
@@ -26,11 +26,11 @@ public:
     virtual void init(const ConfigManager &configManager,
                       TimeManager &timeManager);
 
-    virtual const Domain& getDomain() const { return *domain; }
+    virtual const Domain& domain() const { return *_domain; }
 
-    virtual const Mesh& getMesh() const { return *mesh; }
+    virtual const Mesh& mesh() const { return *_mesh; }
 
-    virtual const VelocityField& getVelocityField() const { return velocity; }
+    virtual const VelocityField& velocityField() const { return velocity; }
 
     bool isUseAnalyticalVelocity() const { return useAnalyticalVelocity; }
 
@@ -54,21 +54,21 @@ public:
      *
      *  @return A Time object.
      */
-    virtual Time getStartTime() const = 0;
+    virtual Time startTime() const = 0;
 
     /**
      *  Return the end time of the test case.
      *
      *  @return A Time object.
      */
-    virtual Time getEndTime() const = 0;
+    virtual Time endTime() const = 0;
 
     /**
      *  Return the time step size of the test case.
      *
      *  @return The step size in seconds.
      */
-    virtual double getStepSize() const = 0;
+    virtual double stepSize() const = 0;
 
     /**
      *  Calculate initial condition and set tracers.

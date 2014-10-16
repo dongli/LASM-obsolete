@@ -24,17 +24,17 @@ public:
 protected:
     vec _density;  //>! species density array
     vec _mass;     //>! species mass array
-    TracerSkeleton *skeleton;
+    TracerSkeleton *_skeleton;
     TracerType type;
     BodyCoord *vy;  //>! long axis vertex body coordinate
     SpaceCoord *vx; //>! long axis vertex space coordinate
     /**
      *  Remapping parameters
      */
-    int numConnectedCell;
-    vector<int> connectedCellIdxs;
+    int _numConnectedCell;
+    vector<int> _connectedCellIndices;
 
-    int hostCellIdx;
+    int _hostCellIndex;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -56,7 +56,7 @@ public:
      *  @param s       the species index.
      */
     void calcDensity(const TimeLevelIndex<2> &timeIdx, int s) {
-        _density[s] = _mass[s]/detH.getLevel(timeIdx);
+        _density[s] = _mass[s]/_detH.level(timeIdx);
     }
 
     double& density(int s) { return _density[s]; }
@@ -70,7 +70,7 @@ public:
      *  @param s       the species index.
      */
     void calcMass(const TimeLevelIndex<2> &timeIdx, int s) {
-        _mass[s] = _density[s]*detH.getLevel(timeIdx);
+        _mass[s] = _density[s]*_detH.level(timeIdx);
     }
 
     double& mass(int s) { return _mass[s]; }
@@ -84,27 +84,16 @@ public:
 
     Tracer& operator=(const Tracer &other);
 
-    const BodyCoord& getLongAxisVertexBodyCoord() const { return *vy; }
+    const BodyCoord& longAxisVertexBodyCoord() const { return *vy; }
 
-    SpaceCoord& getLongAxisVertexSpaceCoord() { return *vx; }
-
-    /**
-     *  Get the mesh index of tracer.
-     *
-     *  @param timeIdx the time level index.
-     *
-     *  @return The mesh index.
-     */
-    MeshIndex& getMeshIndex(const TimeLevelIndex<2> &timeIdx) {
-        return *idx.getLevel(timeIdx);
-    }
+    SpaceCoord& longAxisVertexSpaceCoord() { return *vx; }
 
     /**
      *  Get the skeleton of tracer.
      *
      *  @return The skeleton object.
      */
-    TracerSkeleton& getSkeleton() { return *skeleton; }
+    TracerSkeleton& skeleton() { return *_skeleton; }
 
     void setType(TracerType type) { this->type = type; }
 
@@ -127,7 +116,9 @@ public:
      *
      *  @return The connected mesh cell index list.
      */
-    const vector<int>& getConnectedCells() const { return connectedCellIdxs; }
+    const vector<int>& connectedCellIndices() const {
+        return _connectedCellIndices;
+    }
 
     /**
      *  Get the number of connected cells. It should be used instead of the size
@@ -135,21 +126,11 @@ public:
      *
      *  @return The connected cell number.
      */
-    int getNumConnectedCell() const { return numConnectedCell; }
+    int numConnectedCell() const { return _numConnectedCell; }
 
-    /**
-     *  Set the host cell where the tracer is.
-     *
-     *  @param cell the host cell index.
-     */
-    void setHostCell(int i) { hostCellIdx = i; }
+    int& hostCellIndex() { return _hostCellIndex; }
 
-    /**
-     *  Get the host cell where the tracer is.
-     *
-     *  @return The host cell.
-     */
-    int getHostCell() const { return hostCellIdx; }
+    int hostCellIndex() const { return _hostCellIndex; }
 
     /**
      *  Update deformation matrix from tracer skeleton.

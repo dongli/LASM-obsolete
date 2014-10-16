@@ -9,8 +9,8 @@ SolidRotationTestCase::SolidRotationTestCase() {
 }
 
 SolidRotationTestCase::~SolidRotationTestCase() {
-    delete mesh;
-    delete domain;
+    delete _mesh;
+    delete _domain;
     delete axisPole;
     delete c0;
     delete cr0;
@@ -20,10 +20,10 @@ SolidRotationTestCase::~SolidRotationTestCase() {
 void SolidRotationTestCase::init(const ConfigManager &configManager,
                                  TimeManager &timeManager) {
     // initialize domain
-    domain = new geomtk::SphereDomain(2);
-    domain->setRadius(1.0);
+    _domain = new geomtk::SphereDomain(2);
+    _domain->radius() = 1;
     // initialize mesh
-    mesh = new geomtk::RLLMesh(*domain);
+    _mesh = new Mesh(*_domain);
     int numLon = 240, numLat = 121;
     if (configManager.hasKey("test_case", "num_lon")) {
         configManager.getValue("test_case", "num_lon", numLon);
@@ -31,51 +31,51 @@ void SolidRotationTestCase::init(const ConfigManager &configManager,
     if (configManager.hasKey("test_case", "num_lat")) {
         configManager.getValue("test_case", "num_lat", numLat);
     }
-    mesh->init(numLon, numLat);
+    _mesh->init(numLon, numLat);
     // initialize velocity
-    velocity.create(*mesh, true, HAS_HALF_LEVEL);
+    velocity.create(mesh(), true, HAS_HALF_LEVEL);
     // set parameters
     angleSpeed = PI2/12/86400;
-    U0 = domain->getRadius()*angleSpeed;
+    U0 = domain().radius()*angleSpeed;
     alpha = M_PI_2;
     axisPole = new SpaceCoord(2);
     c0 = new SpaceCoord(2);
     cr0 = new SpaceCoord(2);
     axisPole->setCoord(M_PI,  M_PI_2-alpha);
     c0->setCoord(M_PI_2, alpha);
-    domain->rotate(*axisPole, *c0, *cr0);
-    R = domain->getRadius()/3;
+    domain().rotate(*axisPole, *c0, *cr0);
+    R = domain().radius()/3;
     H0 = 1000;
     AdvectionTestCase::init(configManager, timeManager);
 }
 
-Time SolidRotationTestCase::getStartTime() const {
+Time SolidRotationTestCase::startTime() const {
     Time time;
     return time;
 }
 
-Time SolidRotationTestCase::getEndTime() const {
+Time SolidRotationTestCase::endTime() const {
     Time time;
     return time+12*TimeUnit::DAYS;
 }
 
-double SolidRotationTestCase::getStepSize() const {
+double SolidRotationTestCase::stepSize() const {
     return 30*TimeUnit::MINUTES;
 }
 
 void SolidRotationTestCase::advance(double time,
                                     const TimeLevelIndex<2> &timeIdx) {
     double sinAlpha = sin(alpha), cosAlpha = cos(alpha);
-    for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
-        double cosLat = x.getCosLat();
-        double sinLat = x.getSinLat();
-        double cosLon = x.getCosLon();
+    for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);
+        double cosLat = x.cosLat();
+        double sinLat = x.sinLat();
+        double cosLon = x.cosLon();
         velocity(0)(timeIdx, i) = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
     }
-    for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
-        double sinLon = x.getSinLon();
+    for (int i = 0; i < mesh().totalNumGrid(velocity(1).staggerLocation(), 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(velocity(1).staggerLocation(), i);
+        double sinLon = x.sinLon();
         velocity(1)(timeIdx, i) = -U0*sinLon*sinAlpha;
     }
     if (timeIdx.isCurrentIndex()) {
@@ -91,13 +91,13 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q1", "N/A", "cosine hill tracer");
     density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
-    double q[2*mesh->getTotalNumGrid(CENTER, 2)];
+    double q[2*mesh().totalNumGrid(CENTER, 2)];
     int l = 0;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
     calcSolution(0, timeIdx, *(*density)[1]);
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         q[l++] = (*(*density)[1])(timeIdx, i);
     }
     // propagate initial conditions to advection manager
@@ -116,11 +116,11 @@ void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          ScalarField &q) {
     cr0->setCoordComp(0, (*cr0)(0)+angleSpeed*dt);
-    domain->rotateBack(*axisPole, *c0, *cr0);
+    domain().rotateBack(*axisPole, *c0, *cr0);
     
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
-        double d = domain->calcDistance(*c0, x);
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        double d = domain().calcDistance(*c0, x);
         if (d < R) {
             q(timeIdx, i) = H0*(1+cos(M_PI*d/R))/2;
         } else {

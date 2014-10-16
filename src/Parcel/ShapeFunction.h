@@ -13,10 +13,10 @@ public:
     static vec weights;
 private:
     static const Domain *domain;
-    static double maxValue;
+    static double _maxValue;
 public:
     static void init(const Domain &domain);
-    static double getMaxValue() { return maxValue; }
+    static double maxValue() { return _maxValue; }
     static void evalFunc(const BodyCoord& y, double &f);
     static void evalDerv(const BodyCoord& y, vec &d);
 

@@ -42,16 +42,16 @@ public:
      *
      *  @return The species index.
      */
-    int getSpeciesIndex(const string &name) const;
+    int speciesIndex(const string &name) const;
 
     /**
      *  Get the number of tracer species.
      *
      *  @return The species number.
      */
-    int getNumSpecies() const;
+    int numSpecies() const;
     
-    const TracerSpeciesInfo& getSpeciesInfo(int speciesIdx) const;
+    const TracerSpeciesInfo& speciesInfo(int speciesIdx) const;
 
     /**
      *  Input tracers on the old time level from a netCDF file.

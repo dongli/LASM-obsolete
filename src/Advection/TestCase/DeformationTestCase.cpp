@@ -11,18 +11,18 @@ DeformationTestCase::DeformationTestCase() {
 }
 
 DeformationTestCase::~DeformationTestCase() {
-    delete mesh;
-    delete domain;
+    delete _mesh;
+    delete _domain;
     REPORT_OFFLINE;
 }
 
 void DeformationTestCase::init(const ConfigManager &configManager,
                                TimeManager &timeManager) {
     // Initialize domain.
-    domain = new geomtk::SphereDomain(2);
-    domain->setRadius(1);
+    _domain = new geomtk::SphereDomain(2);
+    _domain->radius() = 1;
     // Initialize mesh.
-    mesh = new geomtk::RLLMesh(*domain);
+    _mesh = new geomtk::RLLMesh(*_domain);
     int numLon = 240, numLat = 121;
     if (configManager.hasKey("test_case", "num_lon")) {
         configManager.getValue("test_case", "num_lon", numLon);
@@ -30,68 +30,68 @@ void DeformationTestCase::init(const ConfigManager &configManager,
     if (configManager.hasKey("test_case", "num_lat")) {
         configManager.getValue("test_case", "num_lat", numLat);
     }
-    mesh->init(numLon, numLat);
+    _mesh->init(numLon, numLat);
     // Call super class initialization.
     AdvectionTestCase::init(configManager, timeManager);
     // Initialize velocity.
     if (!useAnalyticalVelocity) {
-        velocity.create(*mesh, true, HAS_HALF_LEVEL);
+        velocity.create(mesh(), true, HAS_HALF_LEVEL);
     }
 }
 
-Time DeformationTestCase::getStartTime() const {
+Time DeformationTestCase::startTime() const {
     Time time;
     return time;
 }
 
-Time DeformationTestCase::getEndTime() const {
-    Time time = getStartTime()+period;
+Time DeformationTestCase::endTime() const {
+    Time time = startTime()+period;
     return time;
 }
 
-double DeformationTestCase::getStepSize() const {
-    return period/600.0;
+double DeformationTestCase::stepSize() const {
+    return period/1200.0;
 }
 
 void DeformationTestCase::advance(double time,
                                   const TimeLevelIndex<2> &timeIdx) {
     if (useAnalyticalVelocity) return;
     double cosT = cos(M_PI*time/period);
-    double k, R = domain->getRadius();
+    double k, R = domain().radius();
     // advance velocity
     if (subcase == "case1") {
         k = 2.4;
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(0)(timeIdx, i) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
         }
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(1).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(1).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(1)(timeIdx, i) = k*0.5*sin(lon)*cos(lat)*cosT;
         }
     } else if (subcase == "case2") {
         k = 2.0;
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(0)(timeIdx, i) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
         }
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(1).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(1).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(1)(timeIdx, i) = k*sin(lon*2.0)*cos(lat)*cosT;
         }
     } else if (subcase == "case3") {
         k = 5.0*R/period;
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(0)(timeIdx, i) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
         }
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(1).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(1).staggerLocation(), i);
             double lon = x(0), lat = x(1);
             velocity(1)(timeIdx, i) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
         }
@@ -99,13 +99,13 @@ void DeformationTestCase::advance(double time,
         k = 10.0*R/period;
         double c1 = PI2*time/period;
         double c2 = PI2*R/period;
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(0).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(0).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);
             double lon = x(0)-c1, lat = x(1);
             velocity(0)(timeIdx, i) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
         }
-        for (int i = 0; i < mesh->getTotalNumGrid(velocity(1).getStaggerLocation(), 2); ++i) {
-            const SpaceCoord &x = mesh->getGridCoord(velocity(1).getStaggerLocation(), i);
+        for (int i = 0; i < mesh().totalNumGrid(velocity(1).staggerLocation(), 2); ++i) {
+            const SpaceCoord &x = mesh().gridCoord(velocity(1).staggerLocation(), i);
             double lon = x(0)-c1, lat = x(1);
             velocity(1)(timeIdx, i) = k*sin(lon*2.0)*cos(lat)*cosT;
         }
@@ -126,21 +126,21 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
     SpaceCoord c0(2), c1(2);
-    c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
-    c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
+    c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(domain());
+    c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(domain());
     double hmax, r, g, a, b, c;
-    double *q = new double[5*mesh->getTotalNumGrid(CENTER, 2)];
+    double *q = new double[5*mesh().totalNumGrid(CENTER, 2)];
     int l = 0;
     // background tracer
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
     // cosine hills tracer
-    hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
-        double r0 = domain->calcDistance(x, c0);
-        double r1 = domain->calcDistance(x, c1);
+    hmax = 1, r = domain().radius()*0.5, g = 0.1, c = 0.9;
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        double r0 = domain().calcDistance(x, c0);
+        double r1 = domain().calcDistance(x, c1);
         if (r0 < r) {
             q[l++] = g+c*hmax*0.5*(1+cos(M_PI*r0/r));
         } else if (r1 < r) {
@@ -151,15 +151,15 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     }
     // tracer correlated to cosine hills tracer
     a = -0.8, b = 0.9;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        q[l] = a*pow(q[l-mesh->getTotalNumGrid(CENTER, 2)], 2)+b; l++;
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        q[l] = a*pow(q[l-mesh().totalNumGrid(CENTER, 2)], 2)+b; l++;
     }
     // slotted cylinders tracer
     b = 0.1, c = 1.0, r = 0.5;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
-        double r0 = domain->calcDistance(x, c0);
-        double r1 = domain->calcDistance(x, c1);
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        double r0 = domain().calcDistance(x, c0);
+        double r1 = domain().calcDistance(x, c1);
         if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
             (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
             q[l++] = c;
@@ -174,10 +174,10 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     }
     // Gaussian hills tracer
     hmax = 0.95, b = 5.0;
-    for (int i = 0; i < mesh->getTotalNumGrid(CENTER, 2); ++i) {
-        const SpaceCoord &x = mesh->getGridCoord(CENTER, i);
-        vec d0 = x.getCartCoord()-c0.getCartCoord();
-        vec d1 = x.getCartCoord()-c1.getCartCoord();
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        vec d0 = x.cartCoord()-c0.cartCoord();
+        vec d1 = x.cartCoord()-c1.cartCoord();
         q[l++] = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
     }
     // propagate initial conditions to advection manager
@@ -188,9 +188,9 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
 
 void DeformationTestCase::evalVelocity(double dt, const SpaceCoord &x,
                                        bool isMoveOnPole, Velocity &v) const {
-    double time = timeManager->getSeconds()+dt;
+    double time = timeManager->seconds()+dt;
     double cosT = cos(M_PI*time/period);
-    double k, R = domain->getRadius();
+    double k, R = domain().radius();
     if (subcase == "case4") {
         k = 10.0*R/period;
         double c1 = PI2*time/period;
@@ -208,7 +208,7 @@ void DeformationTestCase::evalVelocity(double dt, const SpaceCoord &x,
 
 void DeformationTestCase::evalDivergence(double dt, const SpaceCoord &x,
                                          double &div) const {
-    double time = timeManager->getSeconds()+dt;
+    double time = timeManager->seconds()+dt;
     if (subcase == "case4") {
         div = 0.0;
     } else {

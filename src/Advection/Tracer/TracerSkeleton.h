@@ -26,18 +26,18 @@ public:
     void updateLocalCoord(const Domain &domain,
                           const TimeLevelIndex<2> &timeIdx);
 
-    vector<SpaceCoord*>& getSpaceCoords(const TimeLevelIndex<2> &timeIdx) {
-        return x.getLevel(timeIdx);
+    vector<SpaceCoord*>& spaceCoords(const TimeLevelIndex<2> &timeIdx) {
+        return x.level(timeIdx);
     }
 
-    const vector<BodyCoord*>& getBodyCoords() const { return y; }
+    const vector<BodyCoord*>& bodyCoords() const { return y; }
 
-    vector<MeshIndex*>& getMeshIdxs(const TimeLevelIndex<2> &timeIdx) {
-        return idx.getLevel(timeIdx);
+    vector<MeshIndex*>& meshIndices(const TimeLevelIndex<2> &timeIdx) {
+        return idx.level(timeIdx);
     }
 
-    const vector<vec>& getLocalCoords(const TimeLevelIndex<2> &timeIdx) const {
-        return xl.getLevel(timeIdx);
+    const vector<vec>& localCoords(const TimeLevelIndex<2> &timeIdx) const {
+        return xl.level(timeIdx);
     }
 };
 

@@ -3,16 +3,16 @@
 namespace lasm {
 
 TracerSpeciesInfo::TracerSpeciesInfo() {
-    name = "N/A";
-    units = "N/A";
-    brief = "N/A";
+    _name = "N/A";
+    _units = "N/A";
+    _brief = "N/A";
 }
 
 TracerSpeciesInfo::TracerSpeciesInfo(const string &name, const string &units,
                                      const string &brief) {
-    this->name = name;
-    this->units = units;
-    this->brief = brief;
+    _name = name;
+    _units = units;
+    _brief = brief;
 }
 
 TracerSpeciesInfo::~TracerSpeciesInfo() {
