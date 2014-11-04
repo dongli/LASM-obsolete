@@ -199,7 +199,7 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     embedTracersIntoMesh(newTimeIdx);
     connectTracersAndMesh(newTimeIdx);
     remapTracersToMesh(newTimeIdx);
-//    checkTracerShapes(newTimeIdx);
+    checkTracerShapes(newTimeIdx);
 //    mixTracers(newTimeIdx);
 }
 
@@ -669,7 +669,7 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
 #ifdef CHECK_MIX_TRACER
         std::ofstream file("mixed_tracers.txt");
         int idx = 1;
-        tracer->dump(timeIdx, *domain, file, 0);
+        tracer->dump(timeIdx, *domain, meshAdaptor, file, 0);
 #endif
         assert(surroundTracers.size() > 1);
         vec totalMass1(tracerManager.numSpecies(), arma::fill::zeros);
@@ -718,7 +718,7 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
             }
             assert(weights[i] <= 1);
 #ifdef CHECK_MIX_TRACER
-            tracer1->dump(timeIdx, *domain, file, idx++);
+            tracer1->dump(timeIdx, *domain, meshAdaptor, file, idx++);
 #endif
 #endif
         }
@@ -788,7 +788,7 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
             assert(fabs(totalMass1[s]-totalMass2[s])/totalMass1[s] < 1.0e-12);
         }
 #ifdef CHECK_MIX_TRACER
-        tracer->dump(timeIdx, *domain, file, idx);
+        tracer->dump(timeIdx, *domain, meshAdaptor, file, idx);
         file.close();
 #endif
 #endif

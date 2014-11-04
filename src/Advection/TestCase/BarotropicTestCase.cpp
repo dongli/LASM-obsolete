@@ -44,7 +44,7 @@ Time BarotropicTestCase::startTime() const {
 
 Time BarotropicTestCase::endTime() const {
     Time time;
-    return time+1*TimeUnit::DAYS;
+    return time+10*TimeUnit::DAYS;
 }
 
 double BarotropicTestCase::stepSize() const {

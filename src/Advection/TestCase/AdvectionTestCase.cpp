@@ -18,7 +18,7 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
     this->timeManager = &timeManager;
     io.init(timeManager);
     string pattern, unit;
-    int freq;
+    double freq;
     configManager.getValue("test_case", "output_pattern", pattern);
     configManager.getValue("test_case", "output_freq_unit", unit);
     configManager.getValue("test_case", "output_freq", freq);

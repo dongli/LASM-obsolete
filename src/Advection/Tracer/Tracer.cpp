@@ -51,7 +51,7 @@ void Tracer::updateDeformMatrix(const Domain &domain,
     const vector<BodyCoord*> &y = _skeleton->bodyCoords();
     mat &H0 = *_H.level(timeIdx);
     if (domain.numDim() == 2) {
-        // elements of four matrices H_12, H_14, H_32, H_34
+        // Calculate the elements of four matrices H1, H2, H3, H4.
         double h11_1 = xl[0][0]/(*y[0])(0);
         double h21_1 = xl[0][1]/(*y[0])(0);
         double h11_3 = xl[2][0]/(*y[2])(0);
@@ -60,13 +60,13 @@ void Tracer::updateDeformMatrix(const Domain &domain,
         double h22_2 = xl[1][1]/(*y[1])(1);
         double h12_4 = xl[3][0]/(*y[3])(1);
         double h22_4 = xl[3][1]/(*y[3])(1);
-        // the final matrix is the combination of the four
+        // The final matrix is the combination of the four.
         H0(0, 0) = (h11_1+h11_3)*0.5;
         H0(0, 1) = (h12_2+h12_4)*0.5;
         H0(1, 0) = (h21_1+h21_3)*0.5;
         H0(1, 1) = (h22_2+h22_4)*0.5;
         if (!svd(_U, _S, _V, H0)) {
-            REPORT_ERROR("Encounter error with arma::svd!");
+            REPORT_ERROR("Failed to do SVD on a matrix!");
         }
 #ifndef NDEBUG
         assert(_S[0] >= _S[1]);

@@ -50,7 +50,7 @@ Time DeformationTestCase::endTime() const {
 }
 
 double DeformationTestCase::stepSize() const {
-    return period/1200.0;
+    return period/600;
 }
 
 void DeformationTestCase::advance(double time,
