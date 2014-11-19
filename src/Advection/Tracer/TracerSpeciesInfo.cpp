@@ -9,10 +9,11 @@ TracerSpeciesInfo::TracerSpeciesInfo() {
 }
 
 TracerSpeciesInfo::TracerSpeciesInfo(const string &name, const string &units,
-                                     const string &brief) {
+                                     const string &brief, bool smooth) {
     _name = name;
     _units = units;
     _brief = brief;
+    _smooth = smooth;
 }
 
 TracerSpeciesInfo::~TracerSpeciesInfo() {

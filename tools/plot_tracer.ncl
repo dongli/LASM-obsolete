@@ -61,8 +61,6 @@ begin
 
     res_s2 = True
     res_s2@gsMarkerIndex = 16
-    res_s2@gsLineColor = "black"
-    res_s2@gsLineThicknessF = line_thickness
 
     ; check = ispan(15000, 18000, 10)
     ; check_colors = "green"
@@ -133,6 +131,8 @@ begin
         end do
         ; draw the shape within a region
         if (isdefined("min_lon")) then
+            res_s2@gsLineColor = "gray"
+            res_s2@gsLineThicknessF = line_thickness
             do i = 0, num_tracer-1, 2
                 if (c(i,0) .ge. min_lon .and. c(i,0) .le. max_lon .and. \
                     c(i,1) .ge. min_lat .and. c(i,1) .le. max_lat) then
@@ -150,11 +150,14 @@ begin
             frame(wks)
             continue
         end if
+        res_s2@gsLineColor = "red"
+        res_s2@gsLineThicknessF = 2*line_thickness
         do k = 0, dimsizes(check)-1
             i = ind(id .eq. check(k))
             if (ismissing(i)) then
                 continue
             end if
+            gsn_polymarker(wks, map, f->s1(i,:,0)/RAD, f->s1(i,:,1)/RAD, res_s1)
             do j = 0, num_skel2-1
                 s2(:,j) = f->s2(i,j,:)/RAD
             end do

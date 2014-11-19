@@ -80,7 +80,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
     int numParcelX, numParcelY;
     configManager.getValue("lasm", "num_parcel_x", numParcelX);
     configManager.getValue("lasm", "num_parcel_y", numParcelY);
-    //#define USE_FULL_LAT_LON
+//#define USE_FULL_LAT_LON
 #ifdef USE_FULL_LAT_LON
     numParcel = numParcelX*numParcelY;
 #else
@@ -124,7 +124,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         int l = 0;
         for (int j = 0; j < numParcelY; ++j) {
             for (int i = 0; i < numParcelX; ++i) {
-                if (l == tracer->getID()) {
+                if (l == tracer->ID()) {
                     double lat = domain.axisStart(1)+dlat*0.5+dlat*j;
                     double lon = domain.axisStart(0)+dlon*0.5+dlon*i;
                     x0.setCoord(lon, lat);
@@ -195,8 +195,8 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
 #endif
 
 void TracerManager::registerTracer(const string &name, const string &units,
-                                   const string &brief) {
-    speciesInfos.push_back(new TracerSpeciesInfo(name, units, brief));
+                                   const string &brief, bool smooth) {
+    speciesInfos.push_back(new TracerSpeciesInfo(name, units, brief, smooth));
     for (int t = 0; t < tracers.size(); ++t) {
         tracers[t]->addSpecies();
     }
@@ -218,6 +218,12 @@ int TracerManager::numSpecies() const {
     
 const TracerSpeciesInfo& TracerManager::speciesInfo(int speciesIdx) const {
     return *speciesInfos[speciesIdx];
+}
+
+void TracerManager::resetSpecies() {
+    for (int t = 0; t < tracers.size(); ++t) {
+        tracers[t]->resetSpecies();
+    }
 }
 
 void TracerManager::input(const string &fileName) {

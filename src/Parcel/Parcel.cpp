@@ -63,10 +63,9 @@ void Parcel::calcBodyCoord(const Domain &domain,
 }
     
 double Parcel::shapeFunction(const TimeLevelIndex<2> &timeIdx,
-                                const BodyCoord &y) {
+                             const BodyCoord &y) {
     double f;
     ShapeFunction::evalFunc(y, f);
-//    f /= detH.level(timeIdx);
     return f;
 }
 

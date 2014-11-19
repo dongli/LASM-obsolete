@@ -4,6 +4,7 @@
 namespace lasm {
 
 Tracer::Tracer(int numDim) : Parcel(numDim) {
+    _linearDegeneration = -999.0;
     _skeleton = new TracerSkeleton(this, numDim);
     type = GOOD_SHAPE;
     vy = new BodyCoord(numDim);
@@ -91,6 +92,7 @@ void Tracer::updateDeformMatrix(const Domain &domain,
         *_invH.level(timeIdx) = inv(H0);
         (*vy)() = *_invH.level(timeIdx)*H0*_V.col(0);
         calcSpaceCoord(domain, timeIdx, *vy, *vx);
+        _filament = _S[0]/_S[1];
     } else if (domain.numDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
@@ -105,6 +107,7 @@ void Tracer::updateDeformMatrix(const Domain &domain,
     *_invH.level(timeIdx) = inv(H0);
     (*vy)() = *_invH.level(timeIdx)*H0*_V.col(0);
     calcSpaceCoord(domain, timeIdx, *vy, *vx);
+    _filament = _S[0]/_S[1];
 }
 
 void Tracer::resetSkeleton(const Domain &domain, const Mesh &mesh,

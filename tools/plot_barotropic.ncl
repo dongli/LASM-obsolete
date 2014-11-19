@@ -4,21 +4,21 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-	file_prefix = "barotropic-output"
-    run_type = "Release"
+    root = "~/lasm.build/Release"
+	file_prefix = "lasm.barotropic.case1.240x120"
     time_stamp = "%5.5d"
     start_time = 4700
     end_time = 4700
     time_step = 10
 
-    min_lon = 120.0
-    max_lon = 270.0
-    min_lat = 10.0
-    max_lat = 80.0
+    ; min_lon = 120.0
+    ; max_lon = 270.0
+    ; min_lat = 10.0
+    ; max_lat = 80.0
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/"+run_type+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
+        "do printf '"+root+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
 
     num_time = dimsizes(fs)
 
@@ -54,17 +54,17 @@ begin
         ; plot = gsn_csm_contour_map(wks, f->div(0,:,:), res)
         ; frame(wks)
 
-        res@cnMinLevelValF = -1.0e-4
-        res@cnMaxLevelValF =  1.0e-4
-        res@cnLevelSpacingF = 1.0e-6
-        plot = gsn_csm_contour_map(wks, f->vor_xy(0,:,:), res)
-        frame(wks)
-
-        ; res@cnMinLevelValF = 62000.0
-        ; res@cnMaxLevelValF = 84000.0
-        ; res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
-        ; plot = gsn_csm_contour_map(wks, f->gd(0,:,:), res)
+        ; res@cnMinLevelValF = -1.0e-4
+        ; res@cnMaxLevelValF =  1.0e-4
+        ; res@cnLevelSpacingF = 1.0e-6
+        ; plot = gsn_csm_contour_map(wks, f->vor_xy(0,:,:), res)
         ; frame(wks)
+
+        res@cnMinLevelValF = 61000.0
+        res@cnMaxLevelValF = 86000.0
+        res@cnLevelSpacingF = (res@cnMaxLevelValF-res@cnMinLevelValF)/20.0
+        plot = gsn_csm_contour_map(wks, f->gd(0,:,:), res)
+        frame(wks)
 	end do
 
 end

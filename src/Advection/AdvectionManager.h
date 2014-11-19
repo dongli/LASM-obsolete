@@ -18,16 +18,14 @@ protected:
     TracerManager tracerManager;
     MeshAdaptor meshAdaptor;
     Regrid *regrid;
+    Filter *filter;
     /**
      *  Interparcel mixing control parameters
      */
     double filamentLimit;       //>! control the tracer filament degree
-    double strictFilamentLimit; //>! strict value of filamentLimit
     double radialMixing;        //>! control the radial mixing degree
     double lateralMixing;       //>! control the lateral mixing degree
-    double strictLateralMixing; //>! strict value of lateralMixing
-    double shrinkFactor;        //>! control the mixed parcel shrinking degree
-    double disorderDegreeLimit;
+    double restoreFactor;       //>! control the base density restore degree
     bool isMassFixed;           //>! control whether use mass fixer
     TimeLevels<vector<double>, 2> totalMass;
     /**
@@ -60,7 +58,7 @@ public:
      *  @param brief the brief about the tracer.
      */
     void registerTracer(const string &name, const string &units,
-                        const string &brief);
+                        const string &brief, bool smooth = false);
 
     /**
      *  Input one tracer species from given scalar field.
@@ -182,6 +180,8 @@ public:
     void correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx);
 
     void recordTracer(Tracer::TracerType type, Tracer *tracer);
+
+    vector<Tracer*> getNeighborTracers(Tracer *tracer) const;
 };
 }
 

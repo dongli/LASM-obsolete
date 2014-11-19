@@ -33,7 +33,7 @@ public:
               const geomtk::ConfigManager &configManager);
 
     void registerTracer(const string &name, const string &units,
-                        const string &brief);
+                        const string &brief, bool smooth = false);
 
     /**
      *  Return the tracer species index based on the given name.
@@ -52,6 +52,8 @@ public:
     int numSpecies() const;
     
     const TracerSpeciesInfo& speciesInfo(int speciesIdx) const;
+
+    void resetSpecies();
 
     /**
      *  Input tracers on the old time level from a netCDF file.

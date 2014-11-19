@@ -19,12 +19,12 @@ public:
     enum TracerType {
         GOOD_SHAPE, NEED_MIXING
     };
-    double actualFilamentLimit;
-    double actualLateralMixing;
 protected:
     vec _density;  //>! species density array
     vec _mass;     //>! species mass array
     TracerSkeleton *_skeleton;
+    double _filament;
+    double _linearDegeneration;
     TracerType type;
     BodyCoord *vy;  //>! long axis vertex body coordinate
     SpaceCoord *vx; //>! long axis vertex space coordinate
@@ -49,29 +49,9 @@ public:
         _mass[_mass.size()-1] = 0;
     }
 
-    /**
-     *  Calculate species density from mass.
-     *
-     *  @param timeIdx the time level index.
-     *  @param s       the species index.
-     */
-    void calcDensity(const TimeLevelIndex<2> &timeIdx, int s) {
-        _density[s] = _mass[s]/_detH.level(timeIdx);
-    }
-
     double& density(int s) { return _density[s]; }
 
     double density(int s) const { return _density[s]; }
-
-    /**
-     *  Calculate species mass from density.
-     *
-     *  @param timeIdx the time level index.
-     *  @param s       the species index.
-     */
-    void calcMass(const TimeLevelIndex<2> &timeIdx, int s) {
-        _mass[s] = _density[s]*_detH.level(timeIdx);
-    }
 
     double& mass(int s) { return _mass[s]; }
 
@@ -81,6 +61,12 @@ public:
         _density.zeros();
         _mass.zeros();
     }
+
+    double filament() const { return _filament; }
+
+    double linearDegeneration() const { return _linearDegeneration; }
+
+    double& linearDegeneration() { return _linearDegeneration; }
 
     Tracer& operator=(const Tracer &other);
 

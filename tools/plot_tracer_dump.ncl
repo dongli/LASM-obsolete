@@ -4,15 +4,10 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    load "../build/Debug/tracer_dump.txt"
+    load "tracer_dump.txt"
 
     point_size = 0.005
-    satellite_angle = 2
-
-    ; min_lon = 150.0
-    ; max_lon = 200.0
-    ; min_lat = 30.0
-    ; max_lat = 60.0
+    satellite_angle = 1
 
     wks = gsn_open_wks("pdf", "tracer_dump")
 
@@ -40,21 +35,19 @@ begin
     end if
     map = gsn_csm_map(wks, res_map)
 
-    ; --------------------------------------------------------------------------
     ; plot neighboring cells
-    ; if (isdefined("ngb_cells")) then
-    ;     dims = dimsizes(ngb_cells)
-    ;     num_ngb_cell = dims(0)
-    ;     res_ngb_cells = True
-    ;     res_ngb_cells@gsMarkerIndex = 16
-    ;     res_ngb_cells@gsMarkerColor = "red"
-    ;     res_ngb_cells@gsMarkerSizeF = point_size
-    ;     do i = 0, num_ngb_cell-1
-    ;         gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
-    ;     end do
-    ; end if
+    if (isdefined("ngb_cells")) then
+        dims = dimsizes(ngb_cells)
+        num_ngb_cell = dims(0)
+        res_ngb_cells = True
+        res_ngb_cells@gsMarkerIndex = 16
+        res_ngb_cells@gsMarkerColor = "red"
+        res_ngb_cells@gsMarkerSizeF = point_size
+        do i = 0, num_ngb_cell-1
+            gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
+        end do
+    end if
 
-    ; --------------------------------------------------------------------------
     ; plot neighboring tracers
     ; if (isdefined("ngb_tracers")) then
     ;     dims = dimsizes(ngb_tracers)
@@ -68,7 +61,6 @@ begin
     ;     end do
     ; end if
 
-    ; --------------------------------------------------------------------------
     ; plot parcel shape
     res_shape = True
     res_shape@gsMarkerIndex = 16
@@ -76,14 +68,12 @@ begin
     res_shape@gsLineThicknessF = 1
     gsn_polyline(wks, map, shape(:,0), shape(:,1), res_shape)
 
-    ; --------------------------------------------------------------------------
     ; plot centroid
     res_centroid = True
     res_centroid@gsMarkerIndex = 5
     res_centroid@gsMarkerSizeF = point_size
     gsn_polymarker(wks, map, centroid(0), centroid(1), res_centroid)
 
-    ; --------------------------------------------------------------------------
     ; plot skeleton points
     res_skel = True
     res_skel@gsMarkerIndex = 16

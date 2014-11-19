@@ -61,7 +61,7 @@ double BarotropicTestCase::stepSize() const {
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     TimeLevelIndex<2> timeIdx;
     advectionManager.registerTracer("q0", "N/A", "background tracer");
-    advectionManager.registerTracer("q1", "N/A", "geopotential depth");
+    advectionManager.registerTracer("q1", "N/A", "geopotential depth", true);
     advectionManager.registerTracer("q2", "N/A", "step tracer");
     density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();

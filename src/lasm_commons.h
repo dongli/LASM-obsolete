@@ -73,6 +73,7 @@ typedef geomtk::RLLField<double, 1> SingleScalarField;
 typedef geomtk::RLLVelocityField VelocityField;
 typedef geomtk::RLLRegrid Regrid;
 typedef geomtk::IOManager<geomtk::RLLDataFile> IOManager;
+typedef geomtk::RLLFilter<Mesh> Filter;
 #elif defined USE_CUBIC_SPHERE_MESH
 // ============================================================
 // Cubic sphere mesh objects
@@ -103,6 +104,22 @@ const int FULL = geomtk::RLLStagger::GridType::FULL;
 const int HALF = geomtk::RLLStagger::GridType::HALF;
 const int CENTER = geomtk::RLLStagger::Location::CENTER;
 const int FULL_DIMENSION = geomtk::RLLSpaceDimensions::FULL_DIMENSION;
+
+// Transition function.
+static double transitionFunction(double x0, double y0,
+                                 double x1, double y1,
+                                 double x) {
+    if (x < x0) {
+        return y0;
+    } else if (x > x1) {
+        return y1;
+    } else {
+        double dx = x1-x0;
+        double dy = y1-y0;
+        double t = (x-x0)/dx;
+        return dy*(4-3*t)*pow(t, 3)+y0;
+    }
+}
 
 }
 
