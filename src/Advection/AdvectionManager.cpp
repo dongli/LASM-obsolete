@@ -454,27 +454,23 @@ void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
         tracer->calcBodyCoord(*domain, timeIdx, meshAdaptor.coord(j), y);
         double w = tracer->shapeFunction(timeIdx, y);
         if (w > 0.0) {
-#pragma omp critical
-            {
-                meshAdaptor.connectTracer(j, tracer, w);
-                tracer->connectCell(j);
-            }
+//#pragma omp critical
+            meshAdaptor.connectTracer(j, tracer, w);
+            tracer->connectCell(j);
         }
     }
     if (tracer->numConnectedCell() == 0) {
         // tracer has not connect with any cells, so connect with its host cell
-#pragma omp critical
-        {
-            meshAdaptor.connectTracer(tracer->hostCellIndex(), tracer,
-                                      ShapeFunction::maxValue());
-            tracer->connectCell(tracer->hostCellIndex());
-        }
+//#pragma omp critical
+        meshAdaptor.connectTracer(tracer->hostCellIndex(), tracer,
+                                  ShapeFunction::maxValue());
+        tracer->connectCell(tracer->hostCellIndex());
     }
 }
 
 void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     meshAdaptor.resetConnectedTracers();
-#pragma omp parallel for
+//#pragma omp parallel for
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
         tracer->resetConnectedCells();
@@ -655,7 +651,7 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
     
 void AdvectionManager::fillVoidCells(const TimeLevelIndex<2> &timeIdx) {
     // NOTE: The occurance of void cells should be rare.
-#pragma omp parallel for
+//#pragma omp parallel for
     for (int c = 0; c < numVoidCell; ++c) {
         int cell = voidCells[c];
         Searcher a(cellTree, NULL, cellCoords,
@@ -847,7 +843,7 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
         REPORT_NOTICE("Mass conservation bias percentage is " <<
                       std::fixed << setw(10) << setprecision(4) <<
                       biasPercent*100 << "%.");
-#pragma omp parallel for
+//#pragma omp parallel for
         for (int i = 0; i < mesh->totalNumGrid(CENTER, domain->numDim()); ++i) {
             meshAdaptor.mass(timeIdx, s, i) *= fixer;
             meshAdaptor.density(timeIdx, s, i) =
