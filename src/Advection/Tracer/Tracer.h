@@ -17,7 +17,7 @@ class TracerMeshCell;
 class Tracer : public Parcel {
 public:
     enum TracerType {
-        GOOD_SHAPE, NEED_MIXING
+        GOOD_SHAPE, BAD_SHAPE
     };
 protected:
     vec _density;  //>! species density array

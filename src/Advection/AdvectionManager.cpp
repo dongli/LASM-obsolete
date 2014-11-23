@@ -204,7 +204,7 @@ void AdvectionManager::integrate_RK4(double dt,
         Velocity v4(domain->numDim());
         Velocity v(domain->numDim());
         double div;
-        vec rho(tracerManager.tracers.size());
+        double rho[tracerManager.numSpecies()];
         double k1_rho[tracerManager.numSpecies()];
         double k2_rho[tracerManager.numSpecies()];
         double k3_rho[tracerManager.numSpecies()];
@@ -314,6 +314,7 @@ void AdvectionManager::integrate_RK4(double dt,
                                      const AdvectionTestCase &testCase) {
     TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
     double dt05 = 0.5*dt;
+#pragma omp parallel for
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
         Velocity v1(domain->numDim());
@@ -322,7 +323,7 @@ void AdvectionManager::integrate_RK4(double dt,
         Velocity v4(domain->numDim());
         Velocity v(domain->numDim());
         double div;
-        vec rho(tracerManager.tracers.size());
+        double rho[tracerManager.numSpecies()];
         double k1_rho[tracerManager.numSpecies()];
         double k2_rho[tracerManager.numSpecies()];
         double k3_rho[tracerManager.numSpecies()];
@@ -504,16 +505,15 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx) {
         }
         meanVolume /= tracers.size()+1;
         double ratio = tracer->detH(timeIdx)/meanVolume;
-        double factor = transitionFunction(0, 1, 5, 0,
-                                           (tracer->filament()-1)*ratio);
-        double biasLimit = (maxBiasLimit-minBiasLimit)*factor+minBiasLimit;
+        double biasLimit = transitionFunction(1, maxBiasLimit, 5, minBiasLimit,
+                                              ratio*tracer->filament());
         // Check tracer bias.
         tracer->linearDegeneration() = bias;
         if (bias > biasLimit) {
-            recordTracer(Tracer::NEED_MIXING, tracer);
+            recordTracer(Tracer::BAD_SHAPE, tracer);
         } else {
             if (tracer->filament() > filamentLimit) {
-                recordTracer(Tracer::NEED_MIXING, tracer);
+                recordTracer(Tracer::BAD_SHAPE, tracer);
             }
         }
     }
@@ -614,7 +614,8 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         // Change problematic tracer shape (make tracer more uniform).
         const double maxUniformFactor = 0.5;
         double a, b;
-        double uniformFactor = maxUniformFactor*transitionFunction(1, 1.0/maxUniformFactor, 5, 1, tracer->filament());
+        double uniformFactor = transitionFunction(1, 1, 5, maxUniformFactor,
+                                                  tracer->filament());
         a = pow(pow(uniformFactor, domain->numDim()-1), 1.0/domain->numDim());
         b = 1/a;
         tracer->S()[0] *= a;
@@ -857,7 +858,7 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
 void AdvectionManager::recordTracer(Tracer::TracerType type, Tracer *tracer) {
     tracer->setType(type);
     switch (type) {
-        case Tracer::NEED_MIXING:
+        case Tracer::BAD_SHAPE:
             if (numMixedTracer == mixedTracers.size()) {
                 mixedTracers.push_back(tracer);
             } else {
