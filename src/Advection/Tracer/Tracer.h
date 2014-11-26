@@ -22,6 +22,7 @@ public:
 protected:
     vec _density;  //>! species density array
     vec _mass;     //>! species mass array
+    vec _tendency; //>! species density tendency array
     TracerSkeleton *_skeleton;
     double _filament;
     double _linearDegeneration;
@@ -47,6 +48,8 @@ public:
         _density[_density.size()-1] = 0;
         _mass.resize(_mass.size()+1);
         _mass[_mass.size()-1] = 0;
+        _tendency.resize(_tendency.size()+1);
+        _tendency[_tendency.size()-1] = 0;
     }
 
     double& density(int s) { return _density[s]; }
@@ -56,6 +59,8 @@ public:
     double& mass(int s) { return _mass[s]; }
 
     double mass(int s) const { return _mass[s]; }
+
+    double& tendency(int s) { return _tendency[s]; }
 
     void resetSpecies() {
         _density.zeros();

@@ -15,6 +15,7 @@ private:
     const Mesh *mesh;
     vector<ScalarField*> _density;
     vector<ScalarField*> _mass;
+    vector<SingleScalarField*> _tendency;
     vector<int> _numConnectedTracer;
     vector<vector<Tracer*> > _connectedTracers;
     vector<vector<double> > _remapWeights;
@@ -49,6 +50,10 @@ public:
     double& mass(const TimeLevelIndex<2> &timeIdx, int s, int i) {
         return (*_mass[s])(timeIdx, i);
     }
+
+    vector<SingleScalarField*>& tendency() { return _tendency; }
+
+    double& tendency(int s, int i) { return (*_tendency[s])(i); }
 
     void connectTracer(int i, Tracer *tracer, double weight);
 

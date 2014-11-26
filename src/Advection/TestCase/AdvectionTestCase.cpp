@@ -115,4 +115,15 @@ void AdvectionTestCase::evalDivergence(double dt, const SpaceCoord &x,
     REPORT_ERROR("calcSolution is not available!");
 }
 
+void AdvectionTestCase::advanceDynamics(double time,
+                                        const TimeLevelIndex<2> &timeIdx) {
+    REPORT_ERROR("advance is not available!");
+}
+
+void AdvectionTestCase::advancePhysics(double time,
+                                       const TimeLevelIndex<2> &timeIdx,
+                                       lasm::AdvectionManager &advectionManager) {
+    REPORT_ERROR("advance is not available!");
+}
+
 }

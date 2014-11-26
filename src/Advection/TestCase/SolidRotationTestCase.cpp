@@ -5,6 +5,7 @@
 namespace lasm {
 
 SolidRotationTestCase::SolidRotationTestCase() {
+    _stepSize = 30*TimeUnit::MINUTES;
     REPORT_ONLINE;
 }
 
@@ -59,12 +60,8 @@ Time SolidRotationTestCase::endTime() const {
     return time+12*TimeUnit::DAYS;
 }
 
-double SolidRotationTestCase::stepSize() const {
-    return 30*TimeUnit::MINUTES;
-}
-
-void SolidRotationTestCase::advance(double time,
-                                    const TimeLevelIndex<2> &timeIdx) {
+void SolidRotationTestCase::advanceDynamics(double time,
+                                            const TimeLevelIndex<2> &timeIdx) {
     double sinAlpha = sin(alpha), cosAlpha = cos(alpha);
     for (int i = 0; i < mesh().totalNumGrid(velocity(0).staggerLocation(), 2); ++i) {
         const SpaceCoord &x = mesh().gridCoord(velocity(0).staggerLocation(), i);

@@ -21,14 +21,12 @@ public:
 
     virtual Time endTime() const;
 
-    virtual double stepSize() const;
-
     virtual void calcInitCond(AdvectionManager &advectionManager);
 
     void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                       AdvectionManager &advectionManager);
 
-    virtual void advance(double time, const TimeLevelIndex<2> &timeIdx);
+    virtual void advanceDynamics(double time, const TimeLevelIndex<2> &timeIdx);
 protected:
     void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                       ScalarField &q);

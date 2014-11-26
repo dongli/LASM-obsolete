@@ -6,6 +6,7 @@ namespace lasm {
 
 CartesianRotationTestCase::CartesianRotationTestCase() {
     angleSpeed = 1.0*RAD;
+    _stepSize = 1;
     REPORT_ONLINE;
 }
 
@@ -39,10 +40,6 @@ Time CartesianRotationTestCase::startTime() const {
 Time CartesianRotationTestCase::endTime() const {
     Time res = startTime()+360;
     return res;
-}
-
-double CartesianRotationTestCase::stepSize() const {
-    return 1.0;
 }
 
 void CartesianRotationTestCase::advance(double time,

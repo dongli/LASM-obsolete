@@ -19,6 +19,9 @@ protected:
     SingleScalarField volumes;
     vector<ScalarField*> *density;
     bool useAnalyticalVelocity;
+    double _stepSize;
+    double _subcycledStepSize;
+    int _numSubcycledStep;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
@@ -68,7 +71,11 @@ public:
      *
      *  @return The step size in seconds.
      */
-    virtual double stepSize() const = 0;
+    double stepSize() const { return _stepSize; }
+
+    double subcycledStepSize() const { return _subcycledStepSize; }
+
+    int numSubcycledStep() const { return _numSubcycledStep; }
 
     /**
      *  Calculate initial condition and set tracers.
@@ -83,7 +90,10 @@ public:
      *  @param time    the time in seconds.
      *  @param timeIdx the time level index.
      */
-    virtual void advance(double time, const TimeLevelIndex<2> &timeIdx) = 0;
+    virtual void advanceDynamics(double time, const TimeLevelIndex<2> &timeIdx);
+
+    virtual void advancePhysics(double time, const TimeLevelIndex<2> &timeIdx,
+                                AdvectionManager &advectionManager);
 
     /**
      *  Calculate the solution of the test case if any, and reset the tracers

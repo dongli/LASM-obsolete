@@ -7,6 +7,7 @@ namespace lasm {
 DeformationTestCase::DeformationTestCase() {
     subcase = "case4";
     period = 5;
+    _stepSize = period/600;
     REPORT_ONLINE;
 }
 
@@ -49,12 +50,8 @@ Time DeformationTestCase::endTime() const {
     return time;
 }
 
-double DeformationTestCase::stepSize() const {
-    return period/600;
-}
-
-void DeformationTestCase::advance(double time,
-                                  const TimeLevelIndex<2> &timeIdx) {
+void DeformationTestCase::advanceDynamics(double time,
+                                          const TimeLevelIndex<2> &timeIdx) {
     if (useAnalyticalVelocity) return;
     double cosT = cos(M_PI*time/period);
     double k, R = domain().radius();
@@ -118,6 +115,7 @@ void DeformationTestCase::advance(double time,
 }
 
 void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
+    // Register tracer species.
     advectionManager.registerTracer("q0", "N/A", "background tracer");
     advectionManager.registerTracer("q1", "N/A", "cosine hills tracer");
     advectionManager.registerTracer("q2", "N/A", "q1 correlated tracer");
@@ -125,17 +123,18 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q4", "N/A", "Gaussian hills tracer");
     density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
+    // Set initial conditions for each tracer species.
     SpaceCoord c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(domain());
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(domain());
     double hmax, r, g, a, b, c;
     double *q = new double[5*mesh().totalNumGrid(CENTER, 2)];
     int l = 0;
-    // background tracer
+    // - background tracer
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         q[l++] = 1.0;
     }
-    // cosine hills tracer
+    // - cosine hills tracer
     hmax = 1, r = domain().radius()*0.5, g = 0.1, c = 0.9;
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         const SpaceCoord &x = mesh().gridCoord(CENTER, i);
@@ -149,12 +148,12 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
             q[l++] = g;
         }
     }
-    // tracer correlated to cosine hills tracer
+    // - tracer correlated to cosine hills tracer
     a = -0.8, b = 0.9;
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         q[l] = a*pow(q[l-mesh().totalNumGrid(CENTER, 2)], 2)+b; l++;
     }
-    // slotted cylinders tracer
+    // - slotted cylinders tracer
     b = 0.1, c = 1.0, r = 0.5;
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         const SpaceCoord &x = mesh().gridCoord(CENTER, i);
@@ -172,7 +171,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         else
             q[l++] = b;
     }
-    // Gaussian hills tracer
+    // - Gaussian hills tracer
     hmax = 0.95, b = 5.0;
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         const SpaceCoord &x = mesh().gridCoord(CENTER, i);
@@ -180,7 +179,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         vec d1 = x.cartCoord()-c1.cartCoord();
         q[l++] = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
     }
-    // propagate initial conditions to advection manager
+    // Propagate initial conditions to advection manager.
     TimeLevelIndex<2> timeIdx;
     advectionManager.input(timeIdx, q);
     delete [] q;

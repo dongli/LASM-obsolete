@@ -11,6 +11,13 @@
 #include <ctime>
 #include <fstream>
 
+// Control macros.
+//#define USE_CARTESIAN_DOMAIN
+#define USE_SPHERE_DOMAIN
+#define USE_RLL_MESH
+#define LASM_EVALUATE_TENDENCY_ON_MESH
+//#define LASM_EVALUATE_TENDENCY_ON_PARCEL
+
 namespace lasm {
 
 using std::cout;
@@ -35,10 +42,6 @@ mlpack::bound::HRectBound<2>,
 mlpack::range::RangeSearchStat> Tree;
 typedef mlpack::metric::EuclideanDistance Metric;
 typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
-
-//#define USE_CARTESIAN_DOMAIN
-#define USE_SPHERE_DOMAIN
-#define USE_RLL_MESH
 
 #if defined USE_CARTESIAN_DOMAIN
 // ############################################################

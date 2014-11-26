@@ -15,6 +15,7 @@ MeshAdaptor::~MeshAdaptor() {
         for (int i = 0; i < _density.size(); ++i) {
             delete _density[i];
             delete _mass[i];
+            delete _tendency[i];
         }
     }
     REPORT_OFFLINE;
@@ -59,6 +60,8 @@ void MeshAdaptor::registerTracer(const string &name, const string &units,
     _density.back()->create(name, units, brief, *mesh, CENTER, domain->numDim());
     _mass.push_back(new ScalarField);
     _mass.back()->create(name, units, brief, *mesh, CENTER, domain->numDim());
+    _tendency.push_back(new SingleScalarField);
+    _tendency.back()->create("d"+name, units, "tendency of "+brief, *mesh, CENTER, domain->numDim());
 }
 
 void MeshAdaptor::resetSpecies(const TimeLevelIndex<2> &timeIdx) {

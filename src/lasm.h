@@ -13,6 +13,7 @@
 #include "Advection/TestCase/DeformationTestCase.h"
 #include "Advection/TestCase/SolidRotationTestCase.h"
 #include "Advection/TestCase/BarotropicTestCase.h"
+#include "Advection/TestCase/TerminatorChemistryTestCase.h"
 #endif
 
 #endif

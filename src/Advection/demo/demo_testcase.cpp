@@ -40,15 +40,15 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase->startTime(), testCase->endTime(),
                      testCase->stepSize());
     advectionManager.init(testCase->domain(), testCase->mesh(), configManager);
-
+    // Calculate initial conditions.
     testCase->calcInitCond(advectionManager);
-    testCase->advance(timeManager.seconds(), oldTimeIdx);
+    testCase->advanceDynamics(timeManager.seconds(), oldTimeIdx);
     testCase->output(oldTimeIdx, advectionManager);
     // Integration loop.
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
         double time = timeManager.seconds()+timeManager.stepSize();
-        testCase->advance(time, newTimeIdx);
+        testCase->advanceDynamics(time, newTimeIdx);
         if (!testCase->isUseAnalyticalVelocity()) {
             advectionManager.advance(timeManager.stepSize(), newTimeIdx,
                                      testCase->velocityField());

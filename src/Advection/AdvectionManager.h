@@ -50,6 +50,10 @@ public:
 
     vector<ScalarField*>& density() { return meshAdaptor.density(); }
 
+    vector<SingleScalarField*>& tendency() { return meshAdaptor.tendency(); }
+
+    vector<Tracer*>& tracers() { return tracerManager.tracers; }
+
     /**
      *  Register a tracer species.
      *
@@ -105,6 +109,13 @@ public:
      *  @param timeIdx the time level index.
      */
     void calcTotalMass(const TimeLevelIndex<2> &timeIdx);
+
+    /**
+     *  Remap the external tendencies defined on the mesh onto the parcels.
+     *
+     *  @param timeIdx the time level index.
+     */
+    void remapTendencyFromMesh(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Integrate the advection equations by using 4th-order Runge-Kutta method.

@@ -35,6 +35,15 @@ void BarotropicTestCase::init(const ConfigManager &configManager,
     // Append output fields.
     io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
         {&model.geopotentialDepth(), &model.surfaceGeopotential()});
+    // Set time step size.
+    if (mesh().numGrid(0, FULL) == 160 && mesh().numGrid(1, FULL) == 81) {
+        _stepSize = 1*TimeUnit::MINUTES;
+    } else if (mesh().numGrid(0, FULL) == 240 &&
+               mesh().numGrid(1, FULL) == 121) {
+        _stepSize = 20*TimeUnit::SECONDS;
+    } else {
+        REPORT_ERROR("Unspecified time step size!");
+    }
 }
 
 Time BarotropicTestCase::startTime() const {
@@ -45,17 +54,6 @@ Time BarotropicTestCase::startTime() const {
 Time BarotropicTestCase::endTime() const {
     Time time;
     return time+10*TimeUnit::DAYS;
-}
-
-double BarotropicTestCase::stepSize() const {
-    if (mesh().numGrid(0, FULL) == 160 && mesh().numGrid(1, FULL) == 81) {
-        return 1*TimeUnit::MINUTES;
-    } else if (mesh().numGrid(0, FULL) == 240 &&
-               mesh().numGrid(1, FULL) == 121) {
-        return 20*TimeUnit::SECONDS;
-    } else {
-        REPORT_ERROR("Unspecified time step size!");
-    }
 }
 
 void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
@@ -123,8 +121,8 @@ void BarotropicTestCase::output(const TimeLevelIndex<2> &timeIdx,
     AdvectionTestCase::finishOutput(timeIdx, advectionManager);
 }
 
-void BarotropicTestCase::advance(double time,
-                                 const TimeLevelIndex<2> &timeIdx) {
+void BarotropicTestCase::advanceDynamics(double time,
+                                         const TimeLevelIndex<2> &timeIdx) {
     if (!timeIdx.isCurrentIndex()) {
         model.integrate(timeIdx-1, stepSize());
     }

@@ -19,11 +19,9 @@ public:
 
     virtual Time endTime() const;
 
-    virtual double stepSize() const;
-
     virtual void calcInitCond(AdvectionManager &advectionManager);
 
-    virtual void advance(double time, const TimeLevelIndex<2> &timeIdx);
+    virtual void advanceDynamics(double time, const TimeLevelIndex<2> &timeIdx);
 
     virtual void evalVelocity(double dt, const SpaceCoord &x,
                               bool isMoveOnPole, Velocity &v) const;

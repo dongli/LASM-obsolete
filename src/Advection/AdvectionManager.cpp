@@ -147,6 +147,9 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const VelocityField &velocity) {
+//#if defined LASM_EVALUATE_TENDENCY_ON_MESH
+//    PRINT_USED_TIME(remapTendencyFromMesh(newTimeIdx-1));
+//#endif
     PRINT_USED_TIME(integrate_RK4(dt, newTimeIdx, velocity));
     PRINT_USED_TIME(embedTracersIntoMesh(newTimeIdx));
     PRINT_USED_TIME(connectTracersAndMesh(newTimeIdx));
@@ -198,6 +201,11 @@ void AdvectionManager::integrate_RK4(double dt,
 #pragma omp parallel for
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
+        // Add tracer density tendencies recorded.
+        for (int s = 0; s < tracerManager.numSpecies(); ++s) {
+            tracer->density(s) += tracer->tendency(s)*dt;
+            tracer->mass(s) = tracer->density(s)*tracer->detH(oldTimeIdx);
+        }
         Velocity v1(domain->numDim());
         Velocity v2(domain->numDim());
         Velocity v3(domain->numDim());
@@ -537,13 +545,12 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         vec x1(2);
         vec weights(neighborTracers.size(), arma::fill::zeros);
         for (int i = 0; i < neighborTracers.size(); ++i) {
-            Tracer *tracer1 = neighborTracers[i];
 #ifdef USE_SPHERE_DOMAIN
             domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
                             tracer->x(timeIdx),
-                            tracer1->x(timeIdx), x1);
+                            neighborTracers[i]->x(timeIdx), x1);
 #else
-            x1 = tracer1->x(timeIdx)()-tracer->x(timeIdx)();
+            x1 = neighborTracers[i]->x(timeIdx)()-tracer->x(timeIdx)();
 #endif
             x1 /= n0;
             double cosTheta = norm_dot(x0, x1);
@@ -566,12 +573,14 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         for (int s = 0; s < tracerManager.numSpecies(); ++s) {
             totalMass[s] = tracer->mass(s);
             for (int i = 0; i < neighborTracers.size(); ++i) {
+                if (weights[i] == 0) continue;
                 totalMass[s] += neighborTracers[i]->mass(s);
             }
         }
         // Caclulate weighted total volume.
         double weightedTotalVolume = tracer->detH(timeIdx);
         for (int i = 0; i < neighborTracers.size(); ++i) {
+            if (weights[i] == 0) continue;
             weightedTotalVolume += neighborTracers[i]->detH(timeIdx)*weights[i];
         }
         // Calculate weighted mean tracer density.
@@ -579,36 +588,45 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         for (int s = 0; s < tracerManager.numSpecies(); ++s) {
             weightedMeanDensity[s] = tracer->mass(s);
             for (int i = 0; i < neighborTracers.size(); ++i) {
+                if (weights[i] == 0) continue;
                 weightedMeanDensity[s] += neighborTracers[i]->mass(s)*weights[i];
             }
             weightedMeanDensity[s] /= weightedTotalVolume;
         }
-        // Restore neighbor tracer density to mean density.
-        double neighborMass[tracerManager.numSpecies()];
+        // Restore tracer density to mean density.
+        double newTotalMass[tracerManager.numSpecies()];
         for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-            neighborMass[s] = 0;
+            tracer->density(s) += restoreFactor*(weightedMeanDensity[s]-tracer->density(s));
+            tracer->mass(s) = tracer->density(s)*tracer->detH(timeIdx);
+            newTotalMass[s] = tracer->mass(s);
         }
         for (int i = 0; i < neighborTracers.size(); ++i) {
+            if (weights[i] == 0) continue;
             double weightedRestoreFactor = restoreFactor*weights[i];
             for (int s = 0; s < tracerManager.numSpecies(); ++s) {
                 neighborTracers[i]->density(s) += weightedRestoreFactor*(weightedMeanDensity[s]-neighborTracers[i]->density(s));
                 neighborTracers[i]->mass(s) = neighborTracers[i]->density(s)*neighborTracers[i]->detH(timeIdx);
-                neighborMass[s] += neighborTracers[i]->mass(s);
+                newTotalMass[s] += neighborTracers[i]->mass(s);
             }
         }
-        // Calculate density of problematic tracer.
+        // Fix mass inconservation due to floating point inaccuracy.
         for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-            double oldDensity = tracer->density(s);
-            tracer->mass(s) = totalMass[s]-neighborMass[s];
+            if (totalMass[s] == 0) {
+                if (newTotalMass[s] != 0) {
+                    REPORT_ERROR("totalMass[" << s << "] is zero, but " <<
+                                 "newTotalMass[" << s << "] is not!");
+                }
+                continue;
+            }
+            double fixer = totalMass[s]/newTotalMass[s];
+            if (fixer == 1) continue;
+            cout << setw(8) << s;
+            cout << setw(40) << setprecision(15) << fixer << endl;
+            tracer->mass(s) *= fixer;
             tracer->density(s) = tracer->mass(s)/tracer->detH(timeIdx);
-            double diffMin = (tracer->density(s)-fmin(weightedMeanDensity[s], oldDensity))/oldDensity;
-            double diffMax = (tracer->density(s)-fmax(weightedMeanDensity[s], oldDensity))/oldDensity;
-            if (diffMin < -1.0e-12 || diffMax > 1.0e-12) {
-                cout << setw(40) << setprecision(20) << oldDensity;
-                cout << setw(40) << setprecision(20) << weightedMeanDensity[s];
-                cout << setw(40) << setprecision(20) << tracer->density(s);
-                cout << endl;
-                REPORT_ERROR("Tracer " << tracer->ID() << " density of species " << s << " is not in range!");
+            for (int i = 0; i < neighborTracers.size(); ++i) {
+                neighborTracers[i]->mass(s) *= fixer;
+                neighborTracers[i]->density(s) = neighborTracers[i]->mass(s)/neighborTracers[i]->detH(timeIdx);
             }
         }
         // Change problematic tracer shape (make tracer more uniform).
@@ -632,21 +650,6 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         cout << setw(20) << setprecision(5) << a;
         cout << setw(20) << setprecision(5) << b;
         cout << endl;
-        double newTotalMass[tracerManager.numSpecies()];
-        for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-            newTotalMass[s] = tracer->mass(s);
-        }
-        for (int i = 0; i < neighborTracers.size(); ++i) {
-            for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-                newTotalMass[s] += neighborTracers[i]->mass(s);
-            }
-        }
-        for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-            double diff = fabs(newTotalMass[s]-totalMass[s])/totalMass[s];
-            if (diff > 1.0e-13) {
-                REPORT_ERROR("Tracer mass is not conserved during mixing!");
-            }
-        }
     }
 }
     
@@ -760,6 +763,28 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 #elif defined REMAP_DENSITY
+void AdvectionManager::remapTendencyFromMesh(const TimeLevelIndex<2> &timeIdx) {
+    for (int t = 0; t < tracerManager.tracers.size(); ++t) {
+        Tracer *tracer = tracerManager.tracers[t];
+        for (int s = 0; s < tracerManager.numSpecies(); ++s) {
+            tracer->tendency(s) = 0;
+        }
+        const vector<int> &cellIndices = tracer->connectedCellIndices();
+        double totalWeight = 0;
+        for (int i = 0; i < tracer->numConnectedCell(); ++i) {
+            int j = cellIndices[i];
+            totalWeight += meshAdaptor.remapWeight(j, tracer);
+        }
+        for (int i = 0; i < tracer->numConnectedCell(); ++i) {
+            int j = cellIndices[i];
+            double weight = meshAdaptor.remapWeight(j, tracer)/totalWeight;
+            for (int s = 0; s < tracerManager.numSpecies(); ++s) {
+                tracer->tendency(s) += meshAdaptor.tendency(s, j)*weight;
+            }
+        }
+    }
+}
+
 void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
     tracerManager.resetSpecies();
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
