@@ -1,6 +1,6 @@
 #include "CartesianRotationTestCase.h"
 
-#ifdef USE_CARTESIAN_DOMAIN
+#ifdef LASM_CARTESIAN_DOMAIN
 
 namespace lasm {
 

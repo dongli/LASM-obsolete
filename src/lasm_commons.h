@@ -12,11 +12,11 @@
 #include <fstream>
 
 // Control macros.
-//#define USE_CARTESIAN_DOMAIN
-#define USE_SPHERE_DOMAIN
-#define USE_RLL_MESH
-#define LASM_EVALUATE_TENDENCY_ON_MESH
-//#define LASM_EVALUATE_TENDENCY_ON_PARCEL
+//#define LASM_CARTESIAN_DOMAIN
+#define LASM_SPHERE_DOMAIN
+#define LASM_RLL_MESH
+#define LASM_TENDENCY_ON_MESH
+//#define LASM_TENDENCY_ON_PARCEL
 
 namespace lasm {
 
@@ -43,7 +43,7 @@ mlpack::range::RangeSearchStat> Tree;
 typedef mlpack::metric::EuclideanDistance Metric;
 typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 
-#if defined USE_CARTESIAN_DOMAIN
+#if defined LASM_CARTESIAN_DOMAIN
 // ############################################################
 // Cartesian objects
 typedef geomtk::CartesianDomain Domain;
@@ -58,11 +58,11 @@ typedef geomtk::CartesianField<double, 1> SingleScalarField;
 typedef geomtk::CartesianVelocityField VelocityField;
 typedef geomtk::CartesianRegrid Regrid;
 typedef geomtk::IOManager<geomtk::CartesianDataFile> IOManager;
-#elif defined USE_SPHERE_DOMAIN
+#elif defined LASM_SPHERE_DOMAIN
 // ############################################################
 // Sphere objects
 typedef geomtk::SphereDomain Domain;
-#if defined USE_RLL_MESH
+#if defined LASM_RLL_MESH
 // ============================================================
 // Regular latitude-longitude mesh objects
 typedef geomtk::SphereCoord SpaceCoord;
@@ -89,7 +89,7 @@ typedef geomtk::TimeManager TimeManager;
 typedef geomtk::ConfigManager ConfigManager;
 typedef geomtk::StampString StampString;
 
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
 using geomtk::RAD;
 #else
 const double RAD = 1;

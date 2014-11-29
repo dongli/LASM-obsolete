@@ -37,8 +37,6 @@ protected:
     vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
                                     //>! will modify the order of cells
     // some array recording objects need to be processed
-    int numMixedTracer;
-    vector<Tracer*> mixedTracers;
     int numVoidCell;
     vector<int> voidCells;
 public:
@@ -153,8 +151,6 @@ public:
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
 
-    void checkTracerShapes(const TimeLevelIndex<2> &timeIdx);
-
     /**
      *  Mix tracer with its surrounding tracers.
      *
@@ -189,8 +185,6 @@ public:
      *  @param timeIdx the time level index.
      */
     void correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx);
-
-    void recordTracer(Tracer::TracerType type, Tracer *tracer);
 
     vector<Tracer*> getNeighborTracers(Tracer *tracer) const;
 };

@@ -16,11 +16,11 @@ int main(int argc, const char *argv[])
     bool isTrueSolution = false;
     std::string testCaseName, subcaseName = "";
     configManager.getValue("test_case", "case_name", testCaseName);
-#if defined USE_CARTESIAN_DOMAIN
+#if defined LASM_CARTESIAN_DOMAIN
     if (testCaseName == "cartesian_rotation") {
         testCase = new lasm::CartesianRotationTestCase();
     }
-#elif defined USE_SPHERE_DOMAIN
+#elif defined LASM_SPHERE_DOMAIN
     if (testCaseName == "rotation") {
         testCase = new lasm::SolidRotationTestCase();
         if (configManager.hasKey("test_case", "is_true_solution")) {

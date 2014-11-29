@@ -16,7 +16,7 @@ TracerManager::~TracerManager() {
     REPORT_OFFLINE;
 }
 
-#if defined USE_CARTESIAN_DOMAIN
+#if defined LASM_CARTESIAN_DOMAIN
 void TracerManager::init(const Domain &domain, const Mesh &mesh,
                          const ConfigManager &configManager) {
     this->domain = &domain;
@@ -67,7 +67,7 @@ void TracerManager::init(const Domain &domain, const Mesh &mesh,
         tracer->updateDeformMatrix(domain, mesh, timeIdx);
     }
 }
-#elif defined USE_SPHERE_DOMAIN
+#elif defined LASM_SPHERE_DOMAIN
 void TracerManager::init(const Domain &domain, const Mesh &mesh,
                          const geomtk::ConfigManager &configManager) {
     this->domain = &domain;

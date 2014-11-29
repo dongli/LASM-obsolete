@@ -1,6 +1,6 @@
 #include "SolidRotationTestCase.h"
 
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
 
 namespace lasm {
 

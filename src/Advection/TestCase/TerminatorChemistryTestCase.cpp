@@ -53,7 +53,7 @@ void TerminatorChemistryTestCase::advancePhysics(double time,
                                                  const TimeLevelIndex<2> &timeIdx,
                                                  AdvectionManager &advectionManager) {
     // Calculate tracer density tendencies.
-#if defined LASM_EVALUATE_TENDENCY_ON_MESH
+#if defined LASM_TENDENCY_ON_MESH
     vector<SingleScalarField*> &tendency = advectionManager.tendency();
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
         const SpaceCoord &x = mesh().gridCoord(CENTER, i);
@@ -64,7 +64,7 @@ void TerminatorChemistryTestCase::advancePhysics(double time,
         (*tendency[1])(i) *= (*(*density)[0])(timeIdx, i)/numSubcycledStep();
         (*tendency[2])(i) *= (*(*density)[0])(timeIdx, i)/numSubcycledStep();
     }
-#elif defined LASM_EVALUATE_TENDENCY_ON_PARCEL
+#elif defined LASM_TENDENCY_ON_PARCEL
     if (numSubcycledStep() != 1) {
         REPORT_ERROR("When evaluating tendency on parcels, the subcycling should be turned off!");
     }

@@ -11,7 +11,6 @@ AdvectionManager::AdvectionManager() {
     regrid = NULL;
     filter = NULL;
     cellTree = NULL;
-    numMixedTracer = 0;
     numVoidCell = 0;
     filamentLimit = 100;
     radialMixing = 1;
@@ -71,9 +70,9 @@ void AdvectionManager::init(const Domain &domain, const Mesh &mesh,
     // Initialize mesh adpator.
     meshAdaptor.init(domain, mesh);
     // Initialize tree structure of mesh grids.
-#if defined USE_SPHERE_DOMAIN
+#if defined LASM_SPHERE_DOMAIN
     cellCoords.reshape(3, mesh.totalNumGrid(CENTER, domain.numDim()));
-#elif defined USE_CARTESIAN_DOMAIN
+#elif defined LASM_CARTESIAN_DOMAIN
     cellCoords.reshape(domain.numDim(), mesh.totalNumGrid(CENTER, domain.numDim()));
 #endif
     for (int i = 0; i < mesh.totalNumGrid(CENTER, domain.numDim()); ++i) {
@@ -147,14 +146,13 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const VelocityField &velocity) {
-//#if defined LASM_EVALUATE_TENDENCY_ON_MESH
+//#if defined LASM_TENDENCY_ON_MESH
 //    PRINT_USED_TIME(remapTendencyFromMesh(newTimeIdx-1));
 //#endif
     PRINT_USED_TIME(integrate_RK4(dt, newTimeIdx, velocity));
     PRINT_USED_TIME(embedTracersIntoMesh(newTimeIdx));
     PRINT_USED_TIME(connectTracersAndMesh(newTimeIdx));
     PRINT_USED_TIME(remapTracersToMesh(newTimeIdx));
-    PRINT_USED_TIME(checkTracerShapes(newTimeIdx));
     PRINT_USED_TIME(mixTracers(newTimeIdx));
 }
 
@@ -164,7 +162,6 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     PRINT_USED_TIME(embedTracersIntoMesh(newTimeIdx));
     PRINT_USED_TIME(connectTracersAndMesh(newTimeIdx));
     PRINT_USED_TIME(remapTracersToMesh(newTimeIdx));
-    PRINT_USED_TIME(checkTracerShapes(newTimeIdx));
     PRINT_USED_TIME(mixTracers(newTimeIdx));
 }
 
@@ -222,7 +219,7 @@ void AdvectionManager::integrate_RK4(double dt,
         SpaceCoord &x1 = tracer->x(newTimeIdx);
         MeshIndex &idx0 = tracer->meshIndex(oldTimeIdx);
         MeshIndex &idx1 = tracer->meshIndex(newTimeIdx);
-#ifdef USE_RLL_MESH
+#ifdef LASM_RLL_MESH
         // TODO: Should we hide the following codes? Because they are
         //       related to sphere domain and RLL mesh.
         if (idx0.isOnPole()) {
@@ -272,7 +269,7 @@ void AdvectionManager::integrate_RK4(double dt,
         v = (v1+v2*2.0+v3*2.0+v4)/6.0;
         mesh->move(x0, dt, v, idx0, x1);
         idx1.locate(*mesh, x1);
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
         x1.transformToCart(*domain);
 #endif
         // Update the skeleton points of the tracer.
@@ -282,7 +279,7 @@ void AdvectionManager::integrate_RK4(double dt,
         vector<MeshIndex*> &idx0s = s.meshIndices(oldTimeIdx);
         vector<MeshIndex*> &idx1s = s.meshIndices(newTimeIdx);
         for (int i = 0; i < x0s.size(); ++i) {
-#ifdef USE_RLL_MESH
+#ifdef LASM_RLL_MESH
             if (idx0s[i]->isOnPole()) {
                 idx0s[i]->setMoveOnPole(true);
                 idx1s[i]->setMoveOnPole(true);
@@ -309,7 +306,7 @@ void AdvectionManager::integrate_RK4(double dt,
             v = (v1+v2*2.0+v3*2.0+v4)/6.0;
             mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(*mesh, *x1s[i]);
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
             x1s[i]->transformToCart(*domain);
 #endif
         }
@@ -325,6 +322,11 @@ void AdvectionManager::integrate_RK4(double dt,
 #pragma omp parallel for
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
+        // Add tracer density tendencies recorded.
+        for (int s = 0; s < tracerManager.numSpecies(); ++s) {
+            tracer->density(s) += tracer->tendency(s)*dt;
+            tracer->mass(s) = tracer->density(s)*tracer->detH(oldTimeIdx);
+        }
         Velocity v1(domain->numDim());
         Velocity v2(domain->numDim());
         Velocity v3(domain->numDim());
@@ -341,7 +343,7 @@ void AdvectionManager::integrate_RK4(double dt,
         SpaceCoord &x1 = tracer->x(newTimeIdx);
         MeshIndex &idx0 = tracer->meshIndex(oldTimeIdx);
         MeshIndex &idx1 = tracer->meshIndex(newTimeIdx);
-#ifdef USE_RLL_MESH
+#ifdef LASM_RLL_MESH
         // TODO: Should we hide the following codes? Because they are
         //       related to sphere domain and RLL mesh.
         if (idx0.isOnPole()) {
@@ -391,7 +393,7 @@ void AdvectionManager::integrate_RK4(double dt,
         v = (v1+v2*2.0+v3*2.0+v4)/6.0;
         mesh->move(x0, dt, v, idx0, x1);
         idx1.locate(*mesh, x1);
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
         x1.transformToCart(*domain);
 #endif
         // Update the skeleton points of the tracer.
@@ -401,7 +403,7 @@ void AdvectionManager::integrate_RK4(double dt,
         vector<MeshIndex*> &idx0s = s.meshIndices(oldTimeIdx);
         vector<MeshIndex*> &idx1s = s.meshIndices(newTimeIdx);
         for (int i = 0; i < x0s.size(); ++i) {
-#ifdef USE_RLL_MESH
+#ifdef LASM_RLL_MESH
             if (idx0s[i]->isOnPole()) {
                 idx0s[i]->setMoveOnPole(true);
                 idx1s[i]->setMoveOnPole(true);
@@ -428,7 +430,7 @@ void AdvectionManager::integrate_RK4(double dt,
             v = (v1+v2*2.0+v3*2.0+v4)/6.0;
             mesh->move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(*mesh, *x1s[i]);
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
             x1s[i]->transformToCart(*domain);
 #endif
         }
@@ -487,8 +489,8 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 
-void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx) {
-    numMixedTracer = 0;
+void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
+    int numMixedTracer = 0;
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
         TracerSkeleton &s = tracer->skeleton();
@@ -506,37 +508,24 @@ void AdvectionManager::checkTracerShapes(const TimeLevelIndex<2> &timeIdx) {
         // compared with the neighbor tracers.
         const double minBiasLimit = 0.1;
         const double maxBiasLimit = 0.5;
-        vector<Tracer*> tracers = getNeighborTracers(tracer);
+        vector<Tracer*> neighborTracers = getNeighborTracers(tracer);
         double meanVolume = tracer->detH(timeIdx);
-        for (int i = 0; i < tracers.size(); ++i) {
-            meanVolume += tracers[i]->detH(timeIdx);
+        for (int i = 0; i < neighborTracers.size(); ++i) {
+            meanVolume += neighborTracers[i]->detH(timeIdx);
         }
-        meanVolume /= tracers.size()+1;
+        meanVolume /= neighborTracers.size()+1;
         double ratio = tracer->detH(timeIdx)/meanVolume;
         double biasLimit = transitionFunction(1, maxBiasLimit, 5, minBiasLimit,
                                               ratio*tracer->filament());
         // Check tracer bias.
         tracer->linearDegeneration() = bias;
-        if (bias > biasLimit) {
-            recordTracer(Tracer::BAD_SHAPE, tracer);
-        } else {
-            if (tracer->filament() > filamentLimit) {
-                recordTracer(Tracer::BAD_SHAPE, tracer);
-            }
+        if (bias < biasLimit && tracer->filament() < filamentLimit) {
+            continue;
         }
-    }
-}
-
-void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
-    for (int t = 0; t < numMixedTracer; ++t) {
-        Tracer *tracer = mixedTracers[t];
-        // Get neighbor tracers.
-        vector<Tracer*> neighborTracers = getNeighborTracers(tracer);
         // Calcuate the mixing weights.
         vec x0(2);
-#ifdef USE_SPHERE_DOMAIN
-        domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
-                        tracer->x(timeIdx),
+#ifdef LASM_SPHERE_DOMAIN
+        domain->project(geomtk::SphereDomain::STEREOGRAPHIC, tracer->x(timeIdx),
                         tracer->longAxisVertexSpaceCoord(), x0);
 #else
         x0 = tracer->longAxisVertexSpaceCoord()()-tracer->x(timeIdx)();
@@ -545,9 +534,8 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         vec x1(2);
         vec weights(neighborTracers.size(), arma::fill::zeros);
         for (int i = 0; i < neighborTracers.size(); ++i) {
-#ifdef USE_SPHERE_DOMAIN
-            domain->project(geomtk::SphereDomain::STEREOGRAPHIC,
-                            tracer->x(timeIdx),
+#ifdef LASM_SPHERE_DOMAIN
+            domain->project(geomtk::SphereDomain::STEREOGRAPHIC, tracer->x(timeIdx),
                             neighborTracers[i]->x(timeIdx), x1);
 #else
             x1 = neighborTracers[i]->x(timeIdx)()-tracer->x(timeIdx)();
@@ -602,9 +590,9 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         }
         for (int i = 0; i < neighborTracers.size(); ++i) {
             if (weights[i] == 0) continue;
-            double weightedRestoreFactor = restoreFactor*weights[i];
+            double c = restoreFactor*weights[i];
             for (int s = 0; s < tracerManager.numSpecies(); ++s) {
-                neighborTracers[i]->density(s) += weightedRestoreFactor*(weightedMeanDensity[s]-neighborTracers[i]->density(s));
+                neighborTracers[i]->density(s) += c*(weightedMeanDensity[s]-neighborTracers[i]->density(s));
                 neighborTracers[i]->mass(s) = neighborTracers[i]->density(s)*neighborTracers[i]->detH(timeIdx);
                 newTotalMass[s] += neighborTracers[i]->mass(s);
             }
@@ -620,8 +608,6 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
             }
             double fixer = totalMass[s]/newTotalMass[s];
             if (fixer == 1) continue;
-            cout << setw(8) << s;
-            cout << setw(40) << setprecision(15) << fixer << endl;
             tracer->mass(s) *= fixer;
             tracer->density(s) = tracer->mass(s)/tracer->detH(timeIdx);
             for (int i = 0; i < neighborTracers.size(); ++i) {
@@ -642,14 +628,17 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
         }
         tracer->updateDeformMatrix(*domain, timeIdx);
         tracer->resetSkeleton(*domain, *mesh, timeIdx);
-        tracer->setType(Tracer::GOOD_SHAPE);
-        cout << "+++++++++++++++++++++++++++++++++++++++++" << endl;
-        cout << setw(8) << tracer->ID();
-        cout << setw(20) << setprecision(5) << tracer->filament();
-        cout << setw(20) << setprecision(5) << uniformFactor;
-        cout << setw(20) << setprecision(5) << a;
-        cout << setw(20) << setprecision(5) << b;
-        cout << endl;
+        numMixedTracer++;
+//        cout << "+++++++++++++++++++++++++++++++++++++++++" << endl;
+//        cout << setw(8) << tracer->ID();
+//        cout << setw(20) << setprecision(5) << tracer->filament();
+//        cout << setw(20) << setprecision(5) << uniformFactor;
+//        cout << setw(20) << setprecision(5) << a;
+//        cout << setw(20) << setprecision(5) << b;
+//        cout << endl;
+    }
+    if (numMixedTracer != 0) {
+        REPORT_NOTICE(numMixedTracer << " tracers are mixed.");
     }
 }
     
@@ -660,7 +649,7 @@ void AdvectionManager::fillVoidCells(const TimeLevelIndex<2> &timeIdx) {
         int cell = voidCells[c];
         Searcher a(cellTree, NULL, cellCoords,
                    meshAdaptor.coord(cell).cartCoord(), true);
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
         double searchRadius = 1*RAD*domain->radius();
 #else
         double searchRadius = 0.1*domain->axisSpan(0);
@@ -879,23 +868,6 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
     diagnose(timeIdx); // NOTE: Do not delete this line!
 }
 #endif
-
-void AdvectionManager::recordTracer(Tracer::TracerType type, Tracer *tracer) {
-    tracer->setType(type);
-    switch (type) {
-        case Tracer::BAD_SHAPE:
-            if (numMixedTracer == mixedTracers.size()) {
-                mixedTracers.push_back(tracer);
-            } else {
-                mixedTracers[numMixedTracer] = tracer;
-            }
-            numMixedTracer++;
-            break;
-        default:
-            REPORT_ERROR("Unexpected branch!");
-            break;
-    }
-}
 
 vector<Tracer*> AdvectionManager::getNeighborTracers(Tracer *tracer) const {
     const vector<int> &connectedCellIndices = tracer->connectedCellIndices();

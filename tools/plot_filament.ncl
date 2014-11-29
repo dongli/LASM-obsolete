@@ -20,17 +20,17 @@ begin
 
 	q0 = f0->q1/f0->q0
 	q1 = f1->q1/f1->q0
-	a = f0->volume
+	a = f0->vol(0,:,:)
 
 	A0 = 0
 	A1 = 0
 	do j = 0, num_lat-1
 		do i = 0, num_lon-1
 			do k = 0, dimsizes(t)-1
-				if (q0(j,i) .ge. t(k)) then
+				if (q0(0,j,i) .ge. t(k)) then
 					A0(k) = A0(k)+a(j,i)
 				end if
-				if (q1(j,i) .ge. t(k)) then
+				if (q1(0,j,i) .ge. t(k)) then
 					A1(k) = A1(k)+a(j,i)
 				end if
 			end do

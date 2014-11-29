@@ -38,13 +38,13 @@ Parcel& Parcel::operator=(const Parcel &other) {
 void Parcel::calcSpaceCoord(const Domain &domain,
                             const TimeLevelIndex<2> &timeIdx,
                             const BodyCoord &y, SpaceCoord &x) {
-#if defined USE_SPHERE_DOMAIN
+#if defined LASM_SPHERE_DOMAIN
     // In sphere domain, we calculate deformation matrix stuffs on local
     // stereographic projection of tracer centroid.
     x() = (*_H.level(timeIdx))*y();
     domain.projectBack(geomtk::SphereDomain::STEREOGRAPHIC,
                        *_q.level(timeIdx), x, x());
-#elif defined USE_CARTESIAN_DOMAIN
+#elif defined LASM_CARTESIAN_DOMAIN
     x() = (*_q.level(timeIdx))()+(*_H.level(timeIdx))*y();
     domain.constrain(x);
 #endif
@@ -53,11 +53,11 @@ void Parcel::calcSpaceCoord(const Domain &domain,
 void Parcel::calcBodyCoord(const Domain &domain,
                            const TimeLevelIndex<2> &timeIdx,
                            const SpaceCoord &x, BodyCoord &y) {
-#ifdef USE_SPHERE_DOMAIN
+#ifdef LASM_SPHERE_DOMAIN
     domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
                    *_q.level(timeIdx), x, y());
     y() = (*_invH.level(timeIdx))*y();
-#elif defined USE_CARTESIAN_DOMAIN
+#elif defined LASM_CARTESIAN_DOMAIN
     y() = (*_invH.level(timeIdx))*domain.diffCoord(x, (*_q.level(timeIdx)));
 #endif
 }
