@@ -90,6 +90,9 @@ void AdvectionTestCase::finishOutput(const TimeLevelIndex<2> &timeIdx,
 void AdvectionTestCase::output(const TimeLevelIndex<2> &timeIdx,
                                AdvectionManager &advectionManager) {
     startOutput(timeIdx);
+//    for (int s = 0; s < density->size(); ++s) {
+//        io.output<double>(outputFileIdx, {advectionManager.tendency()[s]});
+//    }
     finishOutput(timeIdx, advectionManager);
 }
 

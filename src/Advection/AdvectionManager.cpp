@@ -542,6 +542,8 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
 #endif
             x1 /= n0;
             double cosTheta = norm_dot(x0, x1);
+            // NOTE: Ensure cosTheta is in the range [-1,1]!
+            cosTheta = fmin(1, fmax(-1, cosTheta));
             double sinTheta = sqrt(1-cosTheta*cosTheta);
             double n1 = norm(x1, 2);
             double d1 = n1*cosTheta;
