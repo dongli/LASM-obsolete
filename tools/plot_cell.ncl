@@ -155,9 +155,9 @@ begin
     end if
 
     res@gsnRightString = cd_string(time, "%Y-%N-%D %H-%M-%S")
-    ; res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
-    ;                      "Max:"+sprintf("%8.5f", max(q))
-    ; q = smth9_Wrap(q, 0.5, 0.25, True)
+    ; res@gsnRightString = "Min:"+sprintf("%8.5f", min(data))+" "+ \
+    ;                      "Max:"+sprintf("%8.5f", max(data))
+    ; data = smth9_Wrap(data, 0.5, 0.25, True)
     plot = gsn_csm_contour_map(wks, data(0,:,:), res)
 
     if (isStrSubset(test_case, "terminator_chemistry")) then

@@ -7,7 +7,7 @@ atmosphere and ocean.
 References
 ==========
 
-- Li Dong, Bin Wang and Li Liu, 2014: A Lagrangian Advection Scheme with Shape Matrix (LASM) for solving advection problem, in preparation.
+- Li Dong, Bin Wang and Li Liu, 2014: A Lagrangian Advection Scheme with Shape Matrix (LASM) for solving advection problem, Geoscientific Model Development, in press.
 
 Authors
 =======
