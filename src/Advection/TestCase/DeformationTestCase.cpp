@@ -121,6 +121,9 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q2", "N/A", "q1 correlated tracer");
     advectionManager.registerTracer("q3", "N/A", "slotted cylinders tracer");
     advectionManager.registerTracer("q4", "N/A", "Gaussian hills tracer");
+    advectionManager.registerTracer("q5", "N/A", "slotted cylinders tracer");
+    advectionManager.registerTracer("q6", "N/A", "displaced slotted cylinders tracer");
+    advectionManager.registerTracer("q7", "N/A", "slotted cylinders residual tracer");
     density = &advectionManager.density();
     AdvectionTestCase::registerDefaultOutput();
     // Set initial conditions for each tracer species.
@@ -128,7 +131,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(domain());
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(domain());
     double hmax, r, g, a, b, c;
-    double *q = new double[5*mesh().totalNumGrid(CENTER, 2)];
+    double *q = new double[8*mesh().totalNumGrid(CENTER, 2)];
     int l = 0;
     // - background tracer
     for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
@@ -178,6 +181,51 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         vec d0 = x.cartCoord()-c0.cartCoord();
         vec d1 = x.cartCoord()-c1.cartCoord();
         q[l++] = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
+    }
+    // - Another slotted cylinders tracer
+    c0.setCoord(M_PI*3.0/4.0, 0.0); c0.transformToCart(domain());
+    c1.setCoord(M_PI*5.0/4.0, 0.0); c1.transformToCart(domain());
+    b = 0.1, c = 1.0/3.0, r = 0.5;
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        double r0 = domain().calcDistance(x, c0);
+        double r1 = domain().calcDistance(x, c1);
+        if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
+            (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
+            q[l++] = c;
+        else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
+                 x(1)-c0(1) < -5.0/12.0*r)
+            q[l++] = c;
+        else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
+                 x(1)-c1(1) > 5.0/12.0*r)
+            q[l++] = c;
+        else
+            q[l++] = b;
+    }
+    // - Displaced slotted cylinders tracer
+    c0.setCoord(M_PI*3.0/4.0, M_PI/18.0); c0.transformToCart(domain());
+    c1.setCoord(M_PI*5.0/4.0, -M_PI/18.0); c1.transformToCart(domain());
+    b = 0.1, c = 2.0/3.0, r = 0.5;
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        const SpaceCoord &x = mesh().gridCoord(CENTER, i);
+        double r0 = domain().calcDistance(x, c0);
+        double r1 = domain().calcDistance(x, c1);
+        if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
+            (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
+            q[l++] = c;
+        else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
+                 x(1)-c0(1) < -5.0/12.0*r)
+            q[l++] = c;
+        else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
+                 x(1)-c1(1) > 5.0/12.0*r)
+            q[l++] = c;
+        else
+            q[l++] = b;
+    }
+    // - Slotted cylinders residual tracer
+    for (int i = 0; i < mesh().totalNumGrid(CENTER, 2); ++i) {
+        q[l] = 1.0-q[l-2*mesh().totalNumGrid(CENTER, 2)]-q[l-mesh().totalNumGrid(CENTER, 2)];
+        l++;
     }
     // Propagate initial conditions to advection manager.
     TimeLevelIndex<2> timeIdx;

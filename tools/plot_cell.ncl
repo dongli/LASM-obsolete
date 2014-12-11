@@ -20,7 +20,7 @@ begin
                      (/0.99,0.09,0.11/)/)
             gsn_define_colormap(wks, cmap)
         end if
-        if (ic .eq. "gh") then
+        if (ic .eq. "gh" .or. ic .eq. "sum_three_tracers") then
             gsn_define_colormap(wks, "WhBlGrYeRe")
         end if
     end if
@@ -75,6 +75,11 @@ begin
             res@cnMinLevelValF = 0.0
             res@cnMaxLevelValF = 1.0
             res@cnLevelSpacingF = 0.1
+        end if
+        if (ic .eq. "sum_three_tracers") then
+            res@cnMinLevelValF = 0.94
+            res@cnMaxLevelValF = 1.04
+            res@cnLevelSpacingF = 0.01
         end if
     end if
     if (isStrSubset(test_case, "barotropic")) then
@@ -217,6 +222,9 @@ begin
             end if
             if (ic .eq. "gh") then
                 q = f->q4/f->q0
+            end if
+            if (ic .eq. "sum_three_tracers") then
+                q = (f->q5+f->q6+f->q7)/f->q0
             end if
         end if
 
