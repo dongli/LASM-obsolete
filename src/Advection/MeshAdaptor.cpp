@@ -17,6 +17,9 @@ MeshAdaptor::~MeshAdaptor() {
             delete _mass[i];
             delete _tendency[i];
         }
+        for (int t = 0; t < _tags.size(); ++t) {
+            delete _tags[t];
+        }
     }
     REPORT_OFFLINE;
 }
@@ -29,6 +32,9 @@ void MeshAdaptor::init(const Domain &domain, const Mesh &mesh) {
     _remapWeights.resize(mesh.totalNumGrid(CENTER));
     _numContainedTracer.resize(mesh.totalNumGrid(CENTER));
     _containedTracers.resize(mesh.totalNumGrid(CENTER));
+    _tags.resize(1);
+    _tags[0] = new SingleScalarField;
+    _tags[0]->create("cpc", "1", "connected parcel counter", mesh, CENTER, domain.numDim());
 }
 
 void MeshAdaptor::input(const string &fileName,

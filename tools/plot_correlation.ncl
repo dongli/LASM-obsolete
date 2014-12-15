@@ -20,9 +20,9 @@ end
 
 begin
 
-    check_parcel = True
-    root = "../build/Release"
-	file_prefix = "lasm.deform.case4.240x120"
+    check_parcel = False
+    root = "."
+	file_prefix = "lasm.deform.case4.1.240x120"
 
     f = addfile(root+"/"+file_prefix+".00300.nc", "r")
 
@@ -36,7 +36,7 @@ begin
     else
         q1 = ndtooned(f->q1/f->q0)
         q2 = ndtooned(f->q2/f->q0)
-        dA = ndtooned(f->volume)
+        dA = ndtooned(f->vol)
     end if
 	A0 = sum(dA)
 

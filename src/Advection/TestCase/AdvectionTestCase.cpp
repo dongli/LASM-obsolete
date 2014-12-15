@@ -52,7 +52,7 @@ void AdvectionTestCase::init(const ConfigManager &configManager,
     }
 }
 
-void AdvectionTestCase::registerDefaultOutput() {
+void AdvectionTestCase::registerDefaultOutput(AdvectionManager &advectionManager) {
     if (!useAnalyticalVelocity) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                              {&velocity(0), &velocity(1),
@@ -62,6 +62,10 @@ void AdvectionTestCase::registerDefaultOutput() {
     for (int s = 0; s < density->size(); ++s) {
         io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
                                              {(*density)[s]});
+    }
+    for (int t = 0; t < advectionManager.tags().size(); ++t) {
+        io.file(outputFileIdx).registerField("double", FULL_DIMENSION,
+                                             {advectionManager.tags()[t]});
     }
 }
 
@@ -82,6 +86,9 @@ void AdvectionTestCase::finishOutput(const TimeLevelIndex<2> &timeIdx,
                                      AdvectionManager &advectionManager) {
     if (io.isFileActive(outputFileIdx)) {
         advectionManager.output(timeIdx, io.file(outputFileIdx).fileID);
+        for (int t = 0; t < advectionManager.tags().size(); ++t) {
+            io.output<double>(outputFileIdx, {advectionManager.tags()[t]});
+        }
         REPORT_NOTICE("File \"" << io.file(outputFileIdx).fileName << "\" is outputted.");
     }
     io.close(outputFileIdx);

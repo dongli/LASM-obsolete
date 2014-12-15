@@ -4,8 +4,8 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    root = "../build/Debug"
-    test_case = "rotation"
+    root = "."
+    test_case = "barotropic.case1"
     resolution = "240x120"
     time_stamp = "%5.5d"
     start_time = 0

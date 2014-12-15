@@ -52,6 +52,8 @@ public:
 
     vector<Tracer*>& tracers() { return tracerManager.tracers; }
 
+    vector<SingleScalarField*>& tags() { return meshAdaptor.tags(); }
+
     /**
      *  Register a tracer species.
      *

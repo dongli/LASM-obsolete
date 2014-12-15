@@ -62,7 +62,7 @@ void BarotropicTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q1", "N/A", "geopotential depth", true);
     advectionManager.registerTracer("q2", "N/A", "step tracer");
     density = &advectionManager.density();
-    AdvectionTestCase::registerDefaultOutput();
+    AdvectionTestCase::registerDefaultOutput(advectionManager);
     // set initial condition for barotropic model
     if (restartFileName == "N/A") {
         if (subcase == "case1") {

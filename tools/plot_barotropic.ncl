@@ -4,7 +4,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    root = "~/lasm.build/Release"
+    root = "."
 	file_prefix = "lasm.barotropic.case1.240x120"
     time_stamp = "%5.5d"
     start_time = 4700

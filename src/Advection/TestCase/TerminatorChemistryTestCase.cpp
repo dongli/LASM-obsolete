@@ -73,7 +73,6 @@ void TerminatorChemistryTestCase::advancePhysics(double time,
         const SpaceCoord &x = tracers[i]->x(timeIdx);
         double cl = tracers[i]->density(1)/tracers[i]->density(0);
         double cl2 = tracers[i]->density(2)/tracers[i]->density(0);
-        double dCl, dCl2;
         calcTendency(x(0), x(1), cl, cl2,
                      tracers[i]->tendency(1), tracers[i]->tendency(2));
         tracers[i]->tendency(1) *= tracers[i]->density(0);
@@ -88,7 +87,7 @@ void TerminatorChemistryTestCase::calcInitCond(AdvectionManager &advectionManage
     advectionManager.registerTracer("q1", "N/A", "Cl");
     advectionManager.registerTracer("q2", "N/A", "Cl2");
     density = &advectionManager.density();
-    AdvectionTestCase::registerDefaultOutput();
+    AdvectionTestCase::registerDefaultOutput(advectionManager);
     // Calculate initial conditions for each tracer species.
     double *q = new double[3*mesh().totalNumGrid(CENTER, 2)];
     int l = 0;

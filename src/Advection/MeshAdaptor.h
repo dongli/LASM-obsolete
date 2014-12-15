@@ -21,6 +21,7 @@ private:
     vector<vector<double> > _remapWeights;
     vector<int> _numContainedTracer;
     vector<vector<Tracer*> > _containedTracers;
+    vector<SingleScalarField*> _tags;
 public:
     MeshAdaptor();
     ~MeshAdaptor();
@@ -54,6 +55,12 @@ public:
     vector<SingleScalarField*>& tendency() { return _tendency; }
 
     double& tendency(int s, int i) { return (*_tendency[s])(i); }
+
+    vector<SingleScalarField*>& tags() { return _tags; }
+
+    SingleScalarField& tag(int t) { return *_tags[t]; }
+
+    double& tag(int t, int i) { return (*_tags[t])(i); }
 
     void connectTracer(int i, Tracer *tracer, double weight);
 

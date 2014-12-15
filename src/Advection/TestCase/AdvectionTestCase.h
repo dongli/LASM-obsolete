@@ -41,7 +41,7 @@ public:
      *  Register default output fields including velocity field and meshed
      *  tracer density fields.
      */
-    void registerDefaultOutput();
+    void registerDefaultOutput(AdvectionManager &advectionManager);
 
     /**
      *  Output data.

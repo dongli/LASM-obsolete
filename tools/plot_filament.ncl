@@ -4,8 +4,8 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-	root = "../build/Release"
-	file_prefix = "lasm.deform.case4.240x120"
+	root = "."
+	file_prefix = "lasm.deform.case4.5.240x120"
 
 	f0 = addfile(root+"/"+file_prefix+".00000.nc", "r")
 	f1 = addfile(root+"/"+file_prefix+".00300.nc", "r")

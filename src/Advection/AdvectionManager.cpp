@@ -15,8 +15,8 @@ AdvectionManager::AdvectionManager() {
     filamentLimit = 100;
     radialMixing = 1;
     lateralMixing = 1000;
-    restoreFactor = 0.1;
-    isMassFixed = true;
+    restoreFactor = 0.001;
+    isMassFixed = false;
     REPORT_ONLINE;
 }
 
@@ -486,6 +486,9 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         Tracer *tracer = tracerManager.tracers[t];
         tracer->resetConnectedCells();
         connectTracerAndMesh(timeIdx, tracer);
+    }
+    for (int i = 0; i < mesh->totalNumGrid(CENTER); ++i) {
+        meshAdaptor.tag(0, i) = meshAdaptor.numConnectedTracer(i);
     }
 }
 

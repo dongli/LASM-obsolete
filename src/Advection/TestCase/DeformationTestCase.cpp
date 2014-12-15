@@ -125,7 +125,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.registerTracer("q6", "N/A", "displaced slotted cylinders tracer");
     advectionManager.registerTracer("q7", "N/A", "slotted cylinders residual tracer");
     density = &advectionManager.density();
-    AdvectionTestCase::registerDefaultOutput();
+    AdvectionTestCase::registerDefaultOutput(advectionManager);
     // Set initial conditions for each tracer species.
     SpaceCoord c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(domain());
