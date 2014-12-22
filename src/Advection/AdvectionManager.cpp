@@ -522,8 +522,12 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
                                               ratio*tracer->filament());
         // Check tracer bias.
         tracer->linearDegeneration() = bias;
+        bool isDegenerated = true;
         if (bias < biasLimit && tracer->filament() < filamentLimit) {
+            isDegenerated = false;
+#ifndef LASM_TEST_ALL_MIX
             continue;
+#endif
         }
         // Calcuate the mixing weights.
         vec x0(2);
@@ -621,6 +625,7 @@ void AdvectionManager::mixTracers(const TimeLevelIndex<2> &timeIdx) {
             }
         }
         // Change problematic tracer shape (make tracer more uniform).
+        if (!isDegenerated) continue;
         const double maxUniformFactor = 0.5;
         double a, b;
         double uniformFactor = transitionFunction(1, 1, 5, maxUniformFactor,

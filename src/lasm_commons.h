@@ -17,6 +17,7 @@
 #define LASM_RLL_MESH
 #define LASM_TENDENCY_ON_MESH
 //#define LASM_TENDENCY_ON_PARCEL
+//#define LASM_TEST_ALL_MIX
 
 namespace lasm {
 
