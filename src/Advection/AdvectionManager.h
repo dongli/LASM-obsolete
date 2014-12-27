@@ -64,6 +64,8 @@ public:
     void registerTracer(const string &name, const string &units,
                         const string &brief, bool smooth = false);
 
+    int numSpecies() const { return tracerManager.numSpecies(); }
+
     /**
      *  Input one tracer species from given scalar field.
      *
