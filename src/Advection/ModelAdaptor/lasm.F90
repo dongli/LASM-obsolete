@@ -16,9 +16,7 @@ contains
         integer, intent(in) :: num_lon, num_lat, num_lev
         real(8), intent(in) :: lon(num_lon), lat(num_lat)
 
-        real(8) lon_half(num_lon), lat_half(num_lat-1)
-
-        call lasm_init_cpp(re, dt, num_lon, lon, lon_half, num_lat, lat, lat_half, num_lev)
+        call lasm_init_cpp(re, dt, num_lon, lon, num_lat, lat, num_lev)
 
     end subroutine lasm_init
 
@@ -26,7 +24,7 @@ contains
 
         real(8), intent(in) :: u(:,:,:), v(:,:,:), q(:,:,:)
 
-        ! u, v and q should not contain halos.
+        ! u, v and q contain one level halos.
 
         call lasm_advance_cpp(u, v, q)
 
