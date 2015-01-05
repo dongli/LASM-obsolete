@@ -101,7 +101,11 @@ foreach (dir ${source_directories})
 endforeach ()
 # Define install rules.
 if (${CMAKE_GENERATOR} MATCHES "Unix Makefiles")
-    install (TARGETS lasm ARCHIVE DESTINATION lib)
+    install (TARGETS lasm
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        COMPONENT library    
+    )
     foreach (header ${headers})
         if (${header} MATCHES "lasm.h")
             install (FILES ${header}
