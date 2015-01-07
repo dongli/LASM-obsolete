@@ -1,7 +1,9 @@
 #include "AdvectionManager.h"
 #include "ShapeFunction.h"
 #include "TracerSkeleton.h"
+#ifndef LASM_IN_ACTION
 #include "AdvectionTestCase.h"
+#endif
 
 namespace lasm {
 
@@ -12,7 +14,7 @@ AdvectionManager::AdvectionManager() {
     filter = NULL;
     cellTree = NULL;
     numVoidCell = 0;
-    filamentLimit = 100;
+    filamentLimit = 5;
     radialMixing = 1;
     lateralMixing = 1000;
     restoreFactor = 0.001;
@@ -156,6 +158,7 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     PRINT_USED_TIME(mixTracers(newTimeIdx));
 }
 
+#ifndef LASM_IN_ACTION
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const AdvectionTestCase &testCase) {
     PRINT_USED_TIME(integrate_RK4(dt, newTimeIdx, testCase));
@@ -164,6 +167,7 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     PRINT_USED_TIME(remapTracersToMesh(newTimeIdx));
     PRINT_USED_TIME(mixTracers(newTimeIdx));
 }
+#endif
 
 void AdvectionManager::calcTotalMass(const TimeLevelIndex<2> &timeIdx) {
     for (int s = 0; s < tracerManager.numSpecies(); ++s) {
@@ -314,6 +318,7 @@ void AdvectionManager::integrate_RK4(double dt,
     }
 }
 
+#ifndef LASM_IN_ACTION
 void AdvectionManager::integrate_RK4(double dt,
                                      const TimeLevelIndex<2> &newTimeIdx,
                                      const AdvectionTestCase &testCase) {
@@ -437,6 +442,7 @@ void AdvectionManager::integrate_RK4(double dt,
         tracer->updateDeformMatrix(*domain, *mesh, newTimeIdx);
     }
 }
+#endif
 
 void AdvectionManager::embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx) {
     meshAdaptor.resetContainedTracers();

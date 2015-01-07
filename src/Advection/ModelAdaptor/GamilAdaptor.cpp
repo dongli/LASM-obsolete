@@ -21,7 +21,11 @@ extern "C" {
 
 void lasm_init_cpp_(double *earthRadius, double *stepSize, int *numLon, double *lon,
                     int *numLat, double *lat, int *numLev) {
-    //configManager.parse(...);
+    REPORT_NOTICE("Initialize LASM.");
+    // Configure LASM.
+    configManager.addKeyValue("lasm", "num_parcel_x", *numLon);
+    configManager.addKeyValue("lasm", "num_parcel_y", *numLat);
+    //
     domain.radius() = *earthRadius;
     dt = *stepSize;
     // Initialize lat-lon mesh.

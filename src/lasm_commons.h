@@ -1,6 +1,19 @@
 #ifndef __lasm_commons__
 #define __lasm_commons__
 
+// Control macros.
+#define LASM_IN_ACTION
+//#define LASM_CARTESIAN_DOMAIN
+#define LASM_SPHERE_DOMAIN
+#define LASM_RLL_MESH
+#define LASM_TENDENCY_ON_MESH
+//#define LASM_TENDENCY_ON_PARCEL
+//#define LASM_TEST_ALL_MIX
+
+#ifdef LASM_IN_ACTION
+#define GEOMTK_MUTE
+#endif
+
 #include "geomtk.h"
 #include <mlpack/methods/range_search/range_search.hpp>
 
@@ -10,14 +23,6 @@
 #include <string>
 #include <ctime>
 #include <fstream>
-
-// Control macros.
-//#define LASM_CARTESIAN_DOMAIN
-#define LASM_SPHERE_DOMAIN
-#define LASM_RLL_MESH
-#define LASM_TENDENCY_ON_MESH
-//#define LASM_TENDENCY_ON_PARCEL
-//#define LASM_TEST_ALL_MIX
 
 namespace lasm {
 
