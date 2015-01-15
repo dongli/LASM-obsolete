@@ -6,11 +6,14 @@
 
 module lasm
 
+    use c_coupler_interface_mod
+
     implicit none
 
     private
 
     public lasm_init
+    public lasm_first_step
     public lasm_advance
     public lasm_final
 
@@ -30,6 +33,8 @@ contains
         real(8) lon(num_lon), dlon
         real(8) lat_(num_lat) ! lat grid coordinates from South Pole to North Pole.
         integer i, j
+        integer start_year, start_month, start_day, start_second
+        integer stop_year, stop_month, stop_day, stop_second
 
         dlon = 2.0d0*pi/num_lon
         do i = 1, num_lon
@@ -42,9 +47,22 @@ contains
         end do
         lat_(num_lat) = pi*0.5d0
 
-        call lasm_init_cpp(re, dt, num_lon, lon, num_lat, lat_, num_lev)
+        call c_coupler_get_start_time(start_year, start_month, start_day, start_second)
+        call c_coupler_get_stop_time(stop_year, stop_month, stop_day, stop_second)
+ 
+        call lasm_init_cpp(re, dt, num_lon, lon, num_lat, lat_, num_lev, &
+                           start_year, start_month, start_day, start_second, &
+                           stop_year, stop_month, stop_day, stop_second)
 
     end subroutine lasm_init
+
+    subroutine lasm_first_step(u, v, q)
+
+        real(8), intent(in) :: u(:,:,:), v(:,:,:), q(:,:,:)
+
+        call lasm_first_step_cpp(u, v, q)
+
+    end subroutine lasm_first_step
 
     subroutine lasm_advance(u, v, q)
 

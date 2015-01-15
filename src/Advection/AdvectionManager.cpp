@@ -148,9 +148,9 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const VelocityField &velocity) {
-//#if defined LASM_TENDENCY_ON_MESH
-//    PRINT_USED_TIME(remapTendencyFromMesh(newTimeIdx-1));
-//#endif
+#if defined LASM_TENDENCY_ON_MESH
+    PRINT_USED_TIME(remapTendencyFromMesh());
+#endif
     PRINT_USED_TIME(integrate_RK4(dt, newTimeIdx, velocity));
     PRINT_USED_TIME(embedTracersIntoMesh(newTimeIdx));
     PRINT_USED_TIME(connectTracersAndMesh(newTimeIdx));
@@ -768,7 +768,7 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 #elif defined REMAP_DENSITY
-void AdvectionManager::remapTendencyFromMesh(const TimeLevelIndex<2> &timeIdx) {
+void AdvectionManager::remapTendencyFromMesh() {
     for (int t = 0; t < tracerManager.tracers.size(); ++t) {
         Tracer *tracer = tracerManager.tracers[t];
         for (int s = 0; s < tracerManager.numSpecies(); ++s) {
