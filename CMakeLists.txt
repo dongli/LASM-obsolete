@@ -8,8 +8,14 @@
 
 cmake_minimum_required (VERSION 2.8)
 
-project (lasm CXX Fortran)
-enable_language (Fortran)
+message (STATUS ${CMAKE_GENERATOR})
+
+if (CMAKE_GENERATOR STREQUAL "Xcode")
+    project (lasm CXX)
+else ()
+    project (lasm CXX Fortran)
+    enable_language (Fortran)
+endif ()
 
 option (OPENMP "Turn OpenMP compiler flag ON or OFF" OFF)
 option (SHARED "Turn building shared libraries ON of OFF" OFF)
@@ -78,14 +84,16 @@ endforeach ()
 add_library (lasm ${shared_or_static} ${headers} ${sources})
 target_link_libraries (lasm geomtk barotropic-model mlpack)
 add_dependencies (lasm geomtk barotropic-model)
-# Define Fortran interface library targets.
-# - GAMIL
-add_library (lasm-gamil ${shared_or_static}
-    ${PROJECT_SOURCE_DIR}/src/Advection/ModelAdaptor/GamilAdaptor.cpp
-    ${PROJECT_SOURCE_DIR}/src/Advection/ModelAdaptor/lasm.F90
-)
-target_link_libraries (lasm-gamil geomtk lasm)
-add_dependencies (lasm-gamil geomtk lasm)
+if (NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    # Define Fortran interface library targets.
+    # - GAMIL
+    add_library (lasm-gamil ${shared_or_static}
+        ${PROJECT_SOURCE_DIR}/src/Advection/ModelAdaptor/GamilAdaptor.cpp
+        ${PROJECT_SOURCE_DIR}/src/Advection/ModelAdaptor/lasm.F90
+    )
+    target_link_libraries (lasm-gamil geomtk lasm)
+    add_dependencies (lasm-gamil geomtk lasm)
+endif ()
 # Define executable targets.
 foreach (dir ${source_directories})
     if (EXISTS "${dir}/demo")
